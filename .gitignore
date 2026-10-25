@@ -1,24 +1,24 @@
 # Ignore editor and IDE settings
-.idea/
-.vscode/
-.claude/
-.cache/
-.sync*
+/.idea/
+/.vscode/
+/.claude/
+/.cache/
+/.sync*
 
 # Ignore log files
 *.log
 
 # Ignore temporary files
-tmp/
+/tmp/
 *.tar.gz
 
 # Ignore build and distribution directories
-backup/
-bin/
-dist/
-release/
-node_modules/
-build-v*/
+/backup/
+/bin/
+/dist/
+/release/
+/node_modules/
+/build-v*/
 /build/
 /log/
 /forks/
@@ -32,7 +32,7 @@ build-v*/
 /RELEASE_NOTES_v17.md
 
 # Ignore compiled binaries
-main
+/main
 
 # Ignore script and executable files
 /release.sh

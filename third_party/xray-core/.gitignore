@@ -36,6 +36,7 @@ vprotogen
 errorgen
 !common/errors/errorgen/
 *.dat
+!common/buf/data/test_MultiBufferReadAllToByte.dat
 
 # Build assets
 /build_assets/

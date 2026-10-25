@@ -1,6 +1,7 @@
 name: Build Rafael Panel Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -59,7 +60,7 @@ jobs:
             relative="${file#third_party/xray-core/}"
             printf '%s  %s\n' "${relative}" "$(sha256sum "${file}" | cut -d' ' -f1)" \
               >> build-v59/xray-source.manifest
-          done < <(find third_party/xray-core -type f -print0 | LC_ALL=C sort -z)
+          done < <(find third_party/xray-core -type f ! -path '*/.git/*' -print0 | LC_ALL=C sort -z)
           actual_source_pin="$(sha256sum build-v59/xray-source.manifest | awk '{print $1}')"
           test "${actual_source_pin}" = "${source_pin}"
           (
@@ -91,6 +92,8 @@ jobs:
           grep -Fq "BOOTSTRAP_UPDATER_SHA256=\"${updater_hash}\"" build-v59/rafael/rafael.sh
           tar -czf build-v59/rafael-linux-amd64.tar.gz -C build-v59 rafael
           tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/install-local.sh
+          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/LICENSE
+          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/NOTICE
           tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/bin/xray-linux-amd64
           tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/xray-fork-version.txt
           tar -tzf build-v59/rafael-xray-core-source.tar.gz | grep -Fxq xray-core/app/iplimit/tracker.go
