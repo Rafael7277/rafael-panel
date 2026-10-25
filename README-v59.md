@@ -6,7 +6,7 @@ Rafael extends the MHSanaei/3x-ui v2.9.2 base with expanded database and panel f
 
 ## Install from GitHub
 
-Latest public release:
+Run as `root` (or enter a root shell with `sudo -i`). Install the latest public release:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/Rafael7277/rafael-panel/main/install.sh)

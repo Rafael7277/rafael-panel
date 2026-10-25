@@ -143,7 +143,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Rafael Panel ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: RELEASE_NOTES_v59.md
           prerelease: false
           files: |
             build-v59/rafael-linux-amd64.tar.gz
