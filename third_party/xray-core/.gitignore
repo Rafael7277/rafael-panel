@@ -43,6 +43,7 @@ errorgen
 
 # Output from dlv test
 **/debug.*
+!main/distro/debug/debug.go
 
 # Certificates and keys
 *.crt

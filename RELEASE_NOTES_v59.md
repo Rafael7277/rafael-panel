@@ -4,7 +4,7 @@
 - Added a guided first-install flow for random/chosen port, generated private web path, admin credentials, optional domain/IP, Let's Encrypt, existing certificate/key, or HTTP-only mode.
 - Routed managed upgrades through the Rafael updater to preserve the existing database and panel configuration. The user confirmed successful v58-to-v59 CLI upgrade.
 - Added GitHub Actions packaging on every push to main and versioned release publishing for tag v59.
-- Bundled GeoIP/GeoSite data and Xray built from the pinned Rafael IP-limit fork; included the standalone binary, matching source archive, and checksums.
+- Bundled GeoIP/GeoSite data and the verified Rafael IP-limit Xray release; included the standalone binary, matching source archive, and checksums.
 - Made installation fail closed when the Rafael fork binary is missing. Upstream Xray replacement is disabled because it does not contain the Rafael IP-limit hook.
 - Documented Rafael's extension of the 3x-ui v2.9.2 database and feature set, including client IP limits, reseller access and quotas, and Adaptive Smart outbound health management.
 - Adaptive Smart temporarily quarantines unhealthy outbounds and restores recovered members to reduce routing failures; no zero packet-loss guarantee is made.

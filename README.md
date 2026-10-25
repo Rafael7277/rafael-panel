@@ -1,6 +1,6 @@
 # Rafael Panel
 
-An enhanced Xray management panel derived from [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui). The upstream base version in `config/version` is **2.9.2**. Rafael extends its database model and panel features while retaining GPL-3.0; see [NOTICE](./NOTICE) and [LICENSE](./LICENSE).
+An enhanced Xray management panel derived from [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui). The upstream base version in `config/version` is **2.9.2**. Rafael extends its database model and panel features while retaining GPL-3.0; the bundled Xray fork retains MPL-2.0. See [NOTICE](./NOTICE), [GPL-3.0 LICENSE](./LICENSE), and [Xray MPL-2.0 license](./third_party/xray-core/LICENSE).
 
 ## Key features
 
@@ -32,7 +32,7 @@ The guided setup offers a random or chosen port, optional domain/IP, private web
 
 ## Releases
 
-Every push to main builds the Linux amd64 panel bundle with the pinned forked Xray and uploads it as a GitHub Actions artifact. Pushing tag v59 also publishes the versioned GitHub Release. The release includes the panel package, standalone Xray, matching Xray source archive, and SHA-256 sidecars.
+The separate [Rafael Xray Core repository](https://github.com/Rafael7277/rafael-xray-core) publishes versioned fork binaries and source archives. The panel build verifies the release tag, fork commit, source fingerprint, and pinned SHA-256 values before embedding Xray in the installer package. Every push to main uploads the Linux amd64 panel bundle as a GitHub Actions artifact; tag v59 publishes the versioned GitHub Release with the panel package, standalone Xray, matching Xray source archive, and SHA-256 sidecars.
 
 Build locally on Windows with Go and tar installed: `./build-release-v59.ps1`
 

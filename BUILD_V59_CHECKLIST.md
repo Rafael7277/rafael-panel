@@ -13,15 +13,16 @@ Add each issue reported during v59 here before changing code. Check a source ite
 - [x] Add a guided clean-install setup for a selected/random port, generated web path, administrator credentials, optional domain/IP, and optional SSL.
 - [x] Support Let's Encrypt, existing certificate/key files, and explicit HTTP-only setup; validate certificate/key match before enabling TLS.
 - [x] Verify stored port, path, domain, and TLS settings before starting the service; keep database password out of installer output.
-- [x] Build and upload the Linux amd64 panel plus bundled Rafael Xray fork on pushes to main; publish a versioned GitHub Release for tag v59.
+- [ ] Fetch the pinned Xray release from `Rafael7277/rafael-xray-core`, verify its source and checksum pins, then bundle it in the Linux amd64 panel package.
+- [ ] Build and upload the Linux amd64 panel package on pushes to main; publish a versioned GitHub Release for tag v59.
 - [x] Build package metadata, notices, install docs, and a v59 release builder.
 - [x] Include the inherited GPL-3.0 license and third-party NOTICE in the repository, install archive, and direct GitHub Release assets.
 - [x] Rebuild the local Linux amd64 v59 archive with the Rafael fork binary and verify both archive contents and checksums (the earlier artifact used stock Xray and is superseded).
 - [x] Vendor the Rafael IP-limit Xray source snapshot based on fork commit `780167948dbbac8cd9fbeacf0b5c1a0c4243c525`, including the three recorded working-tree changes, and pin its full source-tree fingerprint.
-- [x] Change the v59 builders to compile the forked Xray source and publish its matching source archive with a SHA-256 sidecar.
+- [x] Publish the forked Xray source and matching Linux amd64 binary from the separate Rafael Xray Core repository with SHA-256 sidecars.
 - [x] Make fresh install and bootstrap fail closed instead of substituting official Xray when the Rafael fork binary is missing.
 - [x] Stop the in-panel Xray version switch from downloading upstream binaries that do not include Rafael's IP-limit hook.
-- [x] Build the v59 panel archive with the pinned fork binary and verify the package/source checksums.
+- [ ] Build the v59 panel archive with the pinned fork binary from the second repository and verify the package/source checksums.
 - [ ] Confirm that the installed fork's version is shown in the modal, upstream versions are not offered, and the API rejects attempts to replace it.
 - [ ] On an isolated server, confirm the running Xray child receives `XRAY_IPLIMIT_FILE` and enforces a configured IP limit; source inspection alone does not prove runtime enforcement.
 - [x] Configure the public GitHub repository path as Rafael7277/rafael-panel in the installer and install documentation.

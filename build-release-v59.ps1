@@ -104,6 +104,7 @@ try {
     )) {
         Copy-Item (Join-Path $projectRoot $file) $bundleRoot
     }
+    Copy-Item (Join-Path $xraySourceRoot "LICENSE") (Join-Path $bundleRoot "LICENSE-XRAY-MPL-2.0")
 
     # Pin the stable updater before it is bundled so the CLI can reject a
     # mismatched updater when installing from a release archive.
@@ -157,6 +158,7 @@ try {
         "rafael/README-v59.md",
         "rafael/RELEASE_NOTES_v59.md",
         "rafael/LICENSE",
+        "rafael/LICENSE-XRAY-MPL-2.0",
         "rafael/NOTICE",
         "rafael/BUILD_V59_CHECKLIST.md",
         "rafael/xray-fork-version.txt",

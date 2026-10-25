@@ -14,9 +14,10 @@ Third-party release components:
 - Xray-core is built from the vendored Rafael fork source in
   `third_party/xray-core`, based on `github.com/xtls/xray-core v1.260327.0`.
   The fork adds the in-process IP-limit gate used by Rafael Panel. Its source
-  and upstream license are included in the repository and the matching source
-  archive published with each Rafael release. The standalone fork binary is
-  released with the panel and includes the same source fingerprint.
+  and upstream license are included in the repository, the install package,
+  and the matching source archive published with each Rafael release. The
+  standalone fork binary is released with the panel and includes the same
+  source fingerprint.
   Upstream: https://github.com/XTLS/Xray-core
 - GeoIP and GeoSite data: https://github.com/Loyalsoldier/v2ray-rules-dat
 - Automatic TLS issuance, when selected by the operator: acme.sh from

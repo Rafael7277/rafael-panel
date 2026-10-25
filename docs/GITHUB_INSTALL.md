@@ -1,6 +1,6 @@
 # GitHub install and release guide
 
-The public repository is `Rafael7277/rafael-panel`. Rafael is based on MHSanaei/3x-ui v2.9.2 (`config/version`) and keeps the inherited GPL-3.0 license. See `NOTICE` and `LICENSE`.
+The public repository is `Rafael7277/rafael-panel`. Rafael is based on MHSanaei/3x-ui v2.9.2 (`config/version`) and keeps the inherited GPL-3.0 license. The bundled Xray fork is separately published under MPL-2.0. The install package contains both license texts. See `NOTICE` and `LICENSE`.
 
 ## Install
 
@@ -20,11 +20,11 @@ Run as root on supported Debian/Ubuntu Linux amd64. The installer downloads the 
 
 The wizard offers a random or chosen port, optional domain/IP, generated private web path, admin credentials, Let's Encrypt, an existing certificate/key pair, or HTTP without SSL. Let's Encrypt HTTP-01 requires public TCP 80 to reach the challenge listener.
 
-The panel package contains the matching pinned IP-limit Xray binary and GeoIP/GeoSite data. Users do not download Xray separately. Standalone Xray and matching source assets also include SHA-256 files.
+The panel package contains the matching pinned IP-limit Xray binary and GeoIP/GeoSite data. The build fetches and verifies the binary from the public [Rafael Xray Core release](https://github.com/Rafael7277/rafael-xray-core/releases/tag/v1.260327.0-rafael.1), then bundles it; users do not download Xray separately. Standalone Xray and matching source assets also include SHA-256 files.
 
 ## Build and release
 
-Each push to main builds the Linux amd64 panel and Rafael Xray fork bundle and uploads it as a downloadable Actions artifact. A version tag builds the same package and publishes a GitHub Release; this workflow publishes v59 for tag v59.
+Each push to main builds the Linux amd64 panel bundle with the pinned Rafael Xray release and uploads it as a downloadable Actions artifact. A version tag builds the same package and publishes a GitHub Release; this workflow publishes v59 for tag v59.
 
 Local Windows build (Go and tar required):
 

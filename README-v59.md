@@ -1,6 +1,6 @@
 # Rafael Panel v59 Linux amd64 package
 
-The archive contains the panel, first-install and update scripts, systemd service, GeoIP/GeoSite data, notices, and `bin/xray-linux-amd64` built from Rafael's pinned IP-limit Xray fork. Xray is bundled in the panel archive; no separate Xray download is required. Matching standalone Xray and source archives are provided with SHA-256 sidecars.
+The archive contains the panel, first-install and update scripts, systemd service, GeoIP/GeoSite data, GPL-3.0 and Xray MPL-2.0 license texts, notices, and `bin/xray-linux-amd64` fetched from the pinned [Rafael Xray Core release](https://github.com/Rafael7277/rafael-xray-core/releases/tag/v1.260327.0-rafael.1). The panel build verifies the Xray tag, source fingerprint, fork commit, and SHA-256 pins before bundling it; users do not need a separate Xray download. Matching standalone Xray and source archives are included in the panel release with SHA-256 sidecars.
 
 Rafael extends the MHSanaei/3x-ui v2.9.2 base with expanded database and panel features: runtime client IP limits, reseller access and quotas, portal paths, lifecycle controls, and Adaptive Smart outbound health management. Adaptive Smart can quarantine unhealthy members and restore recovered ones to reduce routing failures; it cannot guarantee zero packet loss.
 
