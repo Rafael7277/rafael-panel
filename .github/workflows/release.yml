@@ -112,14 +112,16 @@ jobs:
           fi
           grep -Fq "BOOTSTRAP_UPDATER_SHA256=\"${updater_hash}\"" build-v59/rafael/rafael.sh
           tar -czf build-v59/rafael-linux-amd64.tar.gz -C build-v59 rafael
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/install-local.sh
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/LICENSE
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/LICENSE-XRAY-MPL-2.0
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/NOTICE
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/bin/xray-linux-amd64
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz | grep -Fxq rafael/xray-fork-version.txt
-          tar -tzf build-v59/rafael-xray-core-source.tar.gz | grep -Eq '^\./app/iplimit/tracker\.go$'
-          tar -tzf build-v59/rafael-xray-core-source.tar.gz | grep -Eq '^\./LICENSE$'
+          tar -tzf build-v59/rafael-linux-amd64.tar.gz > build-v59/panel-package.files
+          grep -Fxq rafael/install-local.sh build-v59/panel-package.files
+          grep -Fxq rafael/LICENSE build-v59/panel-package.files
+          grep -Fxq rafael/LICENSE-XRAY-MPL-2.0 build-v59/panel-package.files
+          grep -Fxq rafael/NOTICE build-v59/panel-package.files
+          grep -Fxq rafael/bin/xray-linux-amd64 build-v59/panel-package.files
+          grep -Fxq rafael/xray-fork-version.txt build-v59/panel-package.files
+          tar -tzf build-v59/rafael-xray-core-source.tar.gz > build-v59/xray-source.files
+          grep -Eq '^\./app/iplimit/tracker\.go$' build-v59/xray-source.files
+          grep -Eq '^\./LICENSE$' build-v59/xray-source.files
           (cd build-v59 && sha256sum rafael-linux-amd64.tar.gz > rafael-linux-amd64.tar.gz.sha256)
 
       - name: Upload commit package artifact
