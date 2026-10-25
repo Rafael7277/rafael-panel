@@ -1,0 +1,749 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' settings-page'">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-panel-topbar title="Panel Settings" subtitle="Configure access, security, subscriptions, and integrations"></a-panel-topbar>
+    <a-layout-content>
+      <a-spin :spinning="loadingStates.spinning" :delay="500" tip='{{ i18n "loading"}}' size="large">
+        <transition name="list" appear>
+          <a-alert type="error" v-if="confAlerts.length>0 && loadingStates.fetched" :style="{ marginBottom: '10px' }"
+            message='{{ i18n "secAlertTitle" }}' color="red" show-icon closable>
+            <template slot="description">
+              <b>{{ i18n "secAlertConf" }}</b>
+              <ul>
+                <li v-for="a in confAlerts">[[ a ]]</li>
+              </ul>
+            </template>
+          </a-alert>
+        </transition>
+        <transition name="list" appear>
+          <template>
+            <a-row v-if="!loadingStates.fetched">
+              <div :style="{ minHeight: 'calc(100vh - 120px)' }"></div>
+            </a-row>
+            <a-row :gutter="[isMobile ? 8 : 16, isMobile ? 0 : 12]" v-else>
+              <a-col>
+                <a-card hoverable>
+                  <a-row :style="{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }">
+                    <a-col :xs="24" :sm="10" :style="{ padding: '4px' }">
+                      <a-space direction="horizontal">
+                        <a-button type="primary" :disabled="saveBtnDisable" @click="updateAllSetting">{{ i18n
+                          "pages.settings.save" }}</a-button>
+                        <a-button type="danger" :disabled="!saveBtnDisable" @click="restartPanel">{{ i18n
+                          "pages.settings.restartPanel" }}</a-button>
+                      </a-space>
+                    </a-col>
+                    <a-col :xs="24" :sm="14">
+                      <template>
+                        <div>
+                          <a-back-top :target="() => document.getElementById('content-layout')"
+                            visibility-height="200"></a-back-top>
+                          <a-alert type="warning" :style="{ float: 'right', width: 'fit-content' }"
+                            message='{{ i18n "pages.settings.infoDesc" }}' show-icon>
+                          </a-alert>
+                        </div>
+                      </template>
+                    </a-col>
+                  </a-row>
+                </a-card>
+              </a-col>
+              <a-col>
+                <a-tabs class="settings-tabs" tab-position="left" default-active-key="1">
+                  <a-tab-pane key="1" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="setting"></a-icon>
+                      <span>{{ i18n "pages.settings.panelSettings" }}</span>
+                    </template>
+                    {{ template "settings/panel/general" . }}
+                  </a-tab-pane>
+                  <a-tab-pane key="2" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="safety"></a-icon>
+                      <span>{{ i18n "pages.settings.securitySettings" }}</span>
+                    </template>
+                    {{ template "settings/panel/security" . }}
+                  </a-tab-pane>
+                  <a-tab-pane key="3" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="message"></a-icon>
+                      <span>{{ i18n "pages.settings.TGBotSettings" }}</span>
+                    </template>
+                    {{ template "settings/panel/telegram" . }}
+                  </a-tab-pane>
+                  <a-tab-pane key="4" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="cloud-server"></a-icon>
+                      <span>{{ i18n "pages.settings.subSettings" }}</span>
+                    </template>
+                    {{ template "settings/panel/subscription/general" . }}
+                  </a-tab-pane>
+                  <a-tab-pane key="5" v-if="allSetting.subJsonEnable || allSetting.subClashEnable" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="code"></a-icon>
+                      <span>{{ i18n "pages.settings.subSettings" }} (Formats)</span>
+                    </template>
+                    {{ template "settings/panel/subscription/json" . }}
+                  </a-tab-pane>
+                  <a-tab-pane key="6" :style="{ paddingTop: '20px' }">
+                    <template #tab>
+                      <a-icon type="key"></a-icon>
+                      <span>API Tokens</span>
+                    </template>
+                    <a-card :bordered="false">
+                      <a-space :direction="isMobile ? 'vertical' : 'horizontal'" :style="{ width: '100%', marginBottom: '16px' }">
+                        <a-input v-model.trim="newApiTokenName" placeholder="Token name" style="min-width: 240px"></a-input>
+                        <a-button type="primary" icon="plus" @click="createApiToken">Create Token</a-button>
+                      </a-space>
+                      <a-alert
+                        v-if="latestCreatedApiToken"
+                        type="success"
+                        show-icon
+                        message="New token created"
+                        :description="latestCreatedApiToken"
+                        closable
+                        @close="latestCreatedApiToken = ''"
+                        style="margin-bottom: 16px"
+                      ></a-alert>
+                      <a-alert
+                        type="info"
+                        show-icon
+                        message="Bearer token for nodes and external API calls"
+                        description="Plain token is shown only once at creation time. Existing tokens can be enabled, disabled, or deleted."
+                        style="margin-bottom: 16px"
+                      ></a-alert>
+                      <a-table row-key="id" :columns="apiTokenColumns" :data-source="apiTokens" :pagination="false" size="middle">
+                        <template slot="enabled" slot-scope="text, row">
+                          <a-switch :checked="row.enabled" @change="checked => setApiTokenEnabled(row, checked)"></a-switch>
+                        </template>
+                        <template slot="createdAt" slot-scope="text">
+                          [[ text ? moment(text).format('YYYY-MM-DD HH:mm:ss') : '-' ]]
+                        </template>
+                        <template slot="actions" slot-scope="text, row">
+                          <a-popconfirm title="Delete this token?" @confirm="deleteApiToken(row)">
+                            <a-button type="danger" size="small" icon="delete">Delete</a-button>
+                          </a-popconfirm>
+                        </template>
+                      </a-table>
+                    </a-card>
+                  </a-tab-pane>
+                </a-tabs>
+              </a-col>
+            </a-row>
+          </template>
+        </transition>
+      </a-spin>
+    </a-layout-content>
+  </a-layout>
+</a-layout>
+{{template "page/body_scripts" .}}
+<script src="{{ .asset_path }}assets/qrcode/qrious2.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/otpauth/otpauth.umd.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/js/model/setting.js?{{ .cur_ver }}"></script>
+{{template "component/aSidebar" .}}
+{{template "component/aThemeSwitch" .}}
+{{template "component/aSettingListItem" .}}
+{{template "modals/twoFactorModal"}}
+<script>
+  const app = new Vue({
+    delimiters: ['[[', ']]'],
+    mixins: [MediaQueryMixin],
+    el: '#app',
+    data: {
+      themeSwitcher,
+      loadingStates: {
+        fetched: false,
+        spinning: false
+      },
+      oldAllSetting: new AllSetting(),
+      allSetting: new AllSetting(),
+      saveBtnDisable: true,
+      entryHost: null,
+      entryPort: null,
+      entryProtocol: null,
+      entryIsIP: false,
+      user: {},
+      lang: LanguageManager.getLanguage(),
+      inboundOptions: [],
+      apiTokens: [],
+      newApiTokenName: '',
+      latestCreatedApiToken: '',
+      apiTokenColumns: [
+        { title: 'Name', dataIndex: 'name', key: 'name' },
+        { title: 'Enabled', key: 'enabled', scopedSlots: { customRender: 'enabled' } },
+        { title: 'Created', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' } },
+        { title: 'Actions', key: 'actions', scopedSlots: { customRender: 'actions' } },
+      ],
+      remarkModels: { i: 'Inbound', e: 'Email', o: 'Other' },
+      remarkSeparators: [' ', '-', '_', '@', ':', '~', '|', ',', '.', '/'],
+      datepickerList: [{ name: 'Gregorian (Standard)', value: 'gregorian' }, { name: 'Jalalian (شمسی)', value: 'jalalian' }],
+      remarkSample: '',
+      defaultFragment: {
+        packets: "tlshello",
+        length: "100-200",
+        interval: "10-20",
+        maxSplit: "300-400"
+      },
+      defaultNoises: [
+        { type: "rand", packet: "10-20", delay: "10-16", applyTo: "ip" }
+      ],
+      defaultMux: {
+        enabled: true,
+        concurrency: 8,
+        xudpConcurrency: 16,
+        xudpProxyUDP443: "reject"
+      },
+      defaultRules: [
+        {
+          type: "field",
+          outboundTag: "direct",
+          domain: [
+            "geosite:category-ir"
+          ]
+        },
+        {
+          type: "field",
+          outboundTag: "direct",
+          ip: [
+            "geoip:private",
+            "geoip:ir"
+          ]
+        },
+      ],
+      directIPsOptions: [
+        { label: 'Private IP', value: 'geoip:private' },
+        { label: '🇮🇷 Iran', value: 'geoip:ir' },
+        { label: '🇨🇳 China', value: 'geoip:cn' },
+        { label: '🇷🇺 Russia', value: 'geoip:ru' },
+        { label: '🇻🇳 Vietnam', value: 'geoip:vn' },
+        { label: '🇪🇸 Spain', value: 'geoip:es' },
+        { label: '🇮🇩 Indonesia', value: 'geoip:id' },
+        { label: '🇺🇦 Ukraine', value: 'geoip:ua' },
+        { label: '🇹🇷 Türkiye', value: 'geoip:tr' },
+        { label: '🇧🇷 Brazil', value: 'geoip:br' },
+      ],
+      diretDomainsOptions: [
+        { label: 'Private DNS', value: 'geosite:private' },
+        { label: '🇮🇷 Iran', value: 'geosite:category-ir' },
+        { label: '🇨🇳 China', value: 'geosite:cn' },
+        { label: '🇷🇺 Russia', value: 'geosite:category-ru' },
+        { label: 'Apple', value: 'geosite:apple' },
+        { label: 'Meta', value: 'geosite:meta' },
+        { label: 'Google', value: 'geosite:google' },
+      ],
+    },
+    methods: {
+      loading(spinning = true) {
+        this.loadingStates.spinning = spinning;
+      },
+      _isIp(h) {
+        if (typeof h !== "string") return false;
+
+        // IPv4: four dot-separated octets 0-255
+        const v4 = h.split(".");
+        if (
+          v4.length === 4 &&
+          v4.every(p => /^\d{1,3}$/.test(p) && Number(p) <= 255)
+        ) return true;
+
+        // IPv6: hex groups, optional single :: compression
+        if (!h.includes(":") || h.includes(":::")) return false;
+        const parts = h.split("::");
+        if (parts.length > 2) return false;
+
+        const splitGroups = s => (s ? s.split(":").filter(Boolean) : []);
+        const head = splitGroups(parts[0]);
+        const tail = splitGroups(parts[1]);
+        const validGroup = seg => /^[0-9a-fA-F]{1,4}$/.test(seg);
+
+        if (![...head, ...tail].every(validGroup)) return false;
+        const groups = head.length + tail.length;
+
+        return parts.length === 2 ? groups < 8 : groups === 8;
+      },
+      async getAllSetting() {
+        const msg = await HttpUtil.post(`${panelPath}setting/all`);
+
+        if (msg.success) {
+          if (!this.loadingStates.fetched) {
+            this.loadingStates.fetched = true
+          }
+
+          this.oldAllSetting = new AllSetting(msg.obj);
+          this.allSetting = new AllSetting(msg.obj);
+          app.changeRemarkSample();
+          this.saveBtnDisable = true;
+        }
+      },
+      async loadApiTokens() {
+        const msg = await HttpUtil.get(`${panelPath}setting/apiTokens`);
+        if (msg.success) {
+          this.apiTokens = Array.isArray(msg.obj) ? msg.obj : [];
+        }
+      },
+      async createApiToken() {
+        if (!this.newApiTokenName) {
+          return;
+        }
+        const msg = await HttpUtil.post(`${panelPath}setting/apiTokens/create`, { name: this.newApiTokenName });
+        if (!msg.success) {
+          return;
+        }
+        this.latestCreatedApiToken = msg.obj.token || '';
+        this.newApiTokenName = '';
+        await this.loadApiTokens();
+      },
+      async deleteApiToken(row) {
+        const msg = await HttpUtil.post(`${panelPath}setting/apiTokens/delete/${row.id}`);
+        if (!msg.success) {
+          return;
+        }
+        await this.loadApiTokens();
+      },
+      async setApiTokenEnabled(row, enabled) {
+        const msg = await HttpUtil.post(`${panelPath}setting/apiTokens/setEnabled/${row.id}`, { enabled });
+        if (!msg.success) {
+          return;
+        }
+        row.enabled = enabled;
+      },
+      async loadInboundTags() {
+        const msg = await HttpUtil.get(`${panelApiPath}/inbounds/list`);
+        if (msg && msg.success && Array.isArray(msg.obj)) {
+          this.inboundOptions = msg.obj.map(ib => ({
+            label: `${ib.tag} (${ib.protocol}@${ib.port})`,
+            value: ib.tag,
+          }));
+        } else {
+          this.inboundOptions = [];
+        }
+      },
+      async updateAllSetting() {
+        this.loading(true);
+        const msg = await HttpUtil.post(`${panelPath}setting/update`, this.allSetting);
+        this.loading(false);
+        if (msg.success) {
+          await this.getAllSetting();
+        }
+      },
+      async updateUser() {
+        const sendUpdateUserRequest = async () => {
+          this.loading(true);
+          const msg = await HttpUtil.post(`${panelPath}setting/updateUser`, this.user);
+          this.loading(false);
+          if (msg.success) {
+            this.user = {};
+            window.location.replace(basePath + "logout");
+          }
+        }
+
+        if (this.allSetting.twoFactorEnable) {
+          twoFactorModal.show({
+            title: '{{ i18n "pages.settings.security.twoFactorModalChangeCredentialsTitle" }}',
+            description: '{{ i18n "pages.settings.security.twoFactorModalChangeCredentialsStep" }}',
+            token: this.allSetting.twoFactorToken,
+            type: 'confirm',
+            confirm: (success) => {
+              if (success) {
+                sendUpdateUserRequest();
+              }
+            }
+          })
+        } else {
+          sendUpdateUserRequest();
+        }
+      },
+      async restartPanel() {
+        await new Promise(resolve => {
+          this.$confirm({
+            title: '{{ i18n "pages.settings.restartPanel" }}',
+            content: '{{ i18n "pages.settings.restartPanelDesc" }}',
+            class: themeSwitcher.currentTheme,
+            okText: '{{ i18n "sure" }}',
+            cancelText: '{{ i18n "cancel" }}',
+            onOk: () => resolve(),
+          });
+        });
+        this.loading(true);
+        const msg = await HttpUtil.post(`${panelPath}setting/restartPanel`);
+        this.loading(false);
+        if (!msg.success) return;
+
+        this.loading(true);
+        await PromiseUtil.sleep(5000);
+
+        const { webDomain, webPort, webBasePath, webCertFile, webKeyFile } = this.allSetting;
+        const newProtocol = (webCertFile || webKeyFile) ? "https:" : "http:";
+
+        let base = webBasePath ? webBasePath.replace(/^\//, "") : "";
+        if (base && !base.endsWith("/")) base += "/";
+
+        if (!this.entryIsIP) {
+          const url = new URL(window.location.href);
+          url.pathname = `/${base}panel/settings`;
+          url.protocol = newProtocol;
+          window.location.replace(url.toString());
+          return;
+        }
+
+        let finalHost = this.entryHost;
+        let finalPort = this.entryPort || "";
+
+        if (webDomain && this._isIp(webDomain)) {
+          finalHost = webDomain;
+        }
+
+        if (webPort && Number(webPort) !== Number(this.entryPort)) {
+          finalPort = String(webPort);
+        }
+
+        const url = new URL(`${newProtocol}//${finalHost}`);
+        if (finalPort) url.port = finalPort;
+        url.pathname = `/${base}panel/settings`;
+
+        window.location.replace(url.toString());
+      },
+      toggleTwoFactor(newValue) {
+        if (newValue) {
+          const newTwoFactorToken = RandomUtil.randomBase32String()
+
+          twoFactorModal.show({
+            title: '{{ i18n "pages.settings.security.twoFactorModalSetTitle" }}',
+            token: newTwoFactorToken,
+            type: 'set',
+            confirm: (success) => {
+              if (success) {
+                Vue.prototype.$message['success']('{{ i18n "pages.settings.security.twoFactorModalSetSuccess" }}')
+
+                this.allSetting.twoFactorToken = newTwoFactorToken
+              }
+
+              this.allSetting.twoFactorEnable = success
+            }
+          })
+        } else {
+          twoFactorModal.show({
+            title: '{{ i18n "pages.settings.security.twoFactorModalDeleteTitle" }}',
+            description: '{{ i18n "pages.settings.security.twoFactorModalRemoveStep" }}',
+            token: this.allSetting.twoFactorToken,
+            type: 'confirm',
+            confirm: (success) => {
+              if (success) {
+                Vue.prototype.$message['success']('{{ i18n "pages.settings.security.twoFactorModalDeleteSuccess" }}')
+
+                this.allSetting.twoFactorEnable = false
+                this.allSetting.twoFactorToken = ""
+              }
+            }
+          })
+        }
+      },
+      addNoise() {
+        const newNoise = { type: "rand", packet: "10-20", delay: "10-16", applyTo: "ip" };
+        this.noisesArray = [...this.noisesArray, newNoise];
+      },
+      removeNoise(index) {
+        const newNoises = [...this.noisesArray];
+        newNoises.splice(index, 1);
+        this.noisesArray = newNoises;
+      },
+      updateNoiseType(index, value) {
+        const updatedNoises = [...this.noisesArray];
+        updatedNoises[index] = { ...updatedNoises[index], type: value };
+        this.noisesArray = updatedNoises;
+      },
+      updateNoisePacket(index, value) {
+        const updatedNoises = [...this.noisesArray];
+        updatedNoises[index] = { ...updatedNoises[index], packet: value };
+        this.noisesArray = updatedNoises;
+      },
+      updateNoiseDelay(index, value) {
+        const updatedNoises = [...this.noisesArray];
+        updatedNoises[index] = { ...updatedNoises[index], delay: value };
+        this.noisesArray = updatedNoises;
+      },
+      updateNoiseApplyTo(index, value) {
+        const updatedNoises = [...this.noisesArray];
+        updatedNoises[index] = { ...updatedNoises[index], applyTo: value };
+        this.noisesArray = updatedNoises;
+      },
+      safeJsonParse(rawValue, fallbackValue) {
+        if (typeof rawValue !== 'string' || rawValue.trim() === '') {
+          return fallbackValue;
+        }
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return fallbackValue;
+        }
+      },
+      safeSubPath(value, fallbackPath) {
+        const raw = String(value || '').trim();
+        if (!raw) {
+          return fallbackPath;
+        }
+        if (/^https?:\/\//i.test(raw)) {
+          try {
+            return new URL(raw).pathname || fallbackPath;
+          } catch (e) {
+            return fallbackPath;
+          }
+        }
+        return raw;
+      },
+      changeRemarkSample() {
+        const sample = [];
+        this.remarkModel.forEach(r => sample.push(this.remarkModels[r]));
+        this.remarkSample = sample.length === 0 ? '' : sample.join(this.remarkSeparator);
+      },
+    },
+    computed: {
+      remarkModel: {
+        get() {
+          const remarkModel = String(this.allSetting?.remarkModel || '');
+          return remarkModel.length > 1 ? remarkModel.substring(1).split('') : [];
+        },
+        set(value) {
+          const separator = String(this.allSetting?.remarkModel || '-').charAt(0) || '-';
+          this.allSetting.remarkModel = separator + value.join('');
+          this.changeRemarkSample();
+        }
+      },
+      remarkSeparator: {
+        get() {
+          const remarkModel = String(this.allSetting?.remarkModel || '-');
+          return remarkModel.length > 0 ? remarkModel.charAt(0) : '-';
+        },
+        set(value) {
+          this.allSetting.remarkModel = value + this.remarkModel.join('');
+          this.changeRemarkSample();
+        }
+      },
+      datepicker: {
+        get() {
+          return this.allSetting?.datepicker ? this.allSetting.datepicker : 'gregorian';
+        },
+        set(value) {
+          this.allSetting.datepicker = value;
+        }
+      },
+      ldapInboundTagList: {
+        get: function () {
+          const csv = this.allSetting.ldapInboundTags || "";
+          return csv.length ? csv.split(',').map(s => s.trim()).filter(Boolean) : [];
+        },
+        set: function (list) {
+          this.allSetting.ldapInboundTags = Array.isArray(list) ? list.join(',') : '';
+        }
+      },
+      fragment: {
+        get: function () { return !!String(this.allSetting?.subJsonFragment || '').trim(); },
+        set: function (v) {
+          this.allSetting.subJsonFragment = v ? JSON.stringify(this.defaultFragment) : "";
+        }
+      },
+      fragmentPackets: {
+        get: function () {
+          const fragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+          return this.fragment ? (fragment.packets || "") : "";
+        },
+        set: function (v) {
+          if (v != "") {
+            const newFragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+            newFragment.packets = v;
+            this.allSetting.subJsonFragment = JSON.stringify(newFragment);
+          }
+        }
+      },
+      fragmentLength: {
+        get: function () {
+          const fragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+          return this.fragment ? (fragment.length || "") : "";
+        },
+        set: function (v) {
+          if (v != "") {
+            const newFragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+            newFragment.length = v;
+            this.allSetting.subJsonFragment = JSON.stringify(newFragment);
+          }
+        }
+      },
+      fragmentInterval: {
+        get: function () {
+          const fragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+          return this.fragment ? (fragment.interval || "") : "";
+        },
+        set: function (v) {
+          if (v != "") {
+            const newFragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+            newFragment.interval = v;
+            this.allSetting.subJsonFragment = JSON.stringify(newFragment);
+          }
+        }
+      },
+      fragmentMaxSplit: {
+        get: function () {
+          const fragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+          return this.fragment ? (fragment.maxSplit || "") : "";
+        },
+        set: function (v) {
+          if (v != "") {
+            const newFragment = this.safeJsonParse(this.allSetting.subJsonFragment, this.defaultFragment);
+            newFragment.maxSplit = v;
+            this.allSetting.subJsonFragment = JSON.stringify(newFragment);
+          }
+        }
+      },
+      noises: {
+        get() {
+          return this.allSetting?.subJsonNoises != "";
+        },
+        set(v) {
+          if (v) {
+            this.allSetting.subJsonNoises = JSON.stringify(this.defaultNoises);
+          } else {
+            this.allSetting.subJsonNoises = "";
+          }
+        }
+      },
+      noisesArray: {
+        get() {
+          return this.noises ? this.safeJsonParse(this.allSetting.subJsonNoises, this.defaultNoises) : [];
+        },
+        set(value) {
+          if (this.noises) {
+            this.allSetting.subJsonNoises = JSON.stringify(value);
+          }
+        }
+      },
+      enableMux: {
+        get: function () { return !!String(this.allSetting?.subJsonMux || '').trim(); },
+        set: function (v) {
+          this.allSetting.subJsonMux = v ? JSON.stringify(this.defaultMux) : "";
+        }
+      },
+      muxConcurrency: {
+        get: function () {
+          const mux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          return this.enableMux ? Number(mux.concurrency ?? -1) : -1;
+        },
+        set: function (v) {
+          const newMux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          newMux.concurrency = v;
+          this.allSetting.subJsonMux = JSON.stringify(newMux);
+        }
+      },
+      muxXudpConcurrency: {
+        get: function () {
+          const mux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          return this.enableMux ? Number(mux.xudpConcurrency ?? -1) : -1;
+        },
+        set: function (v) {
+          const newMux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          newMux.xudpConcurrency = v;
+          this.allSetting.subJsonMux = JSON.stringify(newMux);
+        }
+      },
+      muxXudpProxyUDP443: {
+        get: function () {
+          const mux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          return this.enableMux ? (mux.xudpProxyUDP443 || "reject") : "reject";
+        },
+        set: function (v) {
+          const newMux = this.safeJsonParse(this.allSetting.subJsonMux, this.defaultMux);
+          newMux.xudpProxyUDP443 = v;
+          this.allSetting.subJsonMux = JSON.stringify(newMux);
+        }
+      },
+      enableDirect: {
+        get: function () { return !!String(this.allSetting?.subJsonRules || '').trim(); },
+        set: function (v) {
+          this.allSetting.subJsonRules = v ? JSON.stringify(this.defaultRules) : "";
+        }
+      },
+      directIPs: {
+        get: function () {
+          if (!this.enableDirect) return [];
+          const rules = this.safeJsonParse(this.allSetting.subJsonRules, this.defaultRules);
+          if (!Array.isArray(rules)) return [];
+          const ipRule = rules.find(r => r.ip);
+          return ipRule?.ip ?? [];
+        },
+        set: function (v) {
+          let rules = this.safeJsonParse(this.allSetting.subJsonRules, this.defaultRules);
+          if (!Array.isArray(rules)) return;
+
+          if (v.length == 0) {
+            rules = rules.filter(r => !r.ip);
+          } else {
+            let ruleIndex = rules.findIndex(r => r.ip);
+            if (ruleIndex == -1) ruleIndex = rules.push(this.defaultRules[1]) - 1;
+
+            rules[ruleIndex].ip = [];
+            v.forEach(d => {
+              rules[ruleIndex].ip.push(d);
+            });
+          }
+          this.allSetting.subJsonRules = JSON.stringify(rules);
+        }
+      },
+      directDomains: {
+        get: function () {
+          if (!this.enableDirect) return [];
+          const rules = this.safeJsonParse(this.allSetting.subJsonRules, this.defaultRules);
+          if (!Array.isArray(rules)) return [];
+          const domainRule = rules.find(r => r.domain);
+          return domainRule?.domain ?? [];
+        },
+        set: function (v) {
+          let rules = this.safeJsonParse(this.allSetting.subJsonRules, this.defaultRules);
+          if (!Array.isArray(rules)) return;
+          if (v.length == 0) {
+            rules = rules.filter(r => !r.domain);
+          } else {
+            let ruleIndex = rules.findIndex(r => r.domain);
+            if (ruleIndex == -1) ruleIndex = rules.push(this.defaultRules[0]) - 1;
+
+            rules[ruleIndex].domain = v;
+          }
+          this.allSetting.subJsonRules = JSON.stringify(rules);
+        }
+      },
+      confAlerts: {
+        get: function () {
+          if (!this.allSetting) return [];
+          const alerts = [];
+          if (window.location.protocol !== "https:") alerts.push('{{ i18n "secAlertSSL" }}');
+          if (this.allSetting.webPort === 2053) alerts.push('{{ i18n "secAlertPanelPort" }}');
+          const panelPath = window.location.pathname.split('/').length < 4;
+          if (panelPath && this.allSetting.webBasePath == '/') alerts.push('{{ i18n "secAlertPanelURI" }}');
+          if (this.allSetting.subEnable) {
+            const subPath = this.safeSubPath(this.allSetting.subURI, this.allSetting.subPath || '/sub/');
+            if (subPath == '/sub/') alerts.push('{{ i18n "secAlertSubURI" }}');
+          }
+          if (this.allSetting.subJsonEnable) {
+            const subJsonPath = this.safeSubPath(this.allSetting.subJsonURI, this.allSetting.subJsonPath || '/json/');
+            if (subJsonPath == '/json/') alerts.push('{{ i18n "secAlertSubJsonURI" }}');
+          }
+          return alerts;
+        }
+      }
+    },
+    async mounted() {
+      this.entryHost = window.location.hostname;
+      this.entryPort = window.location.port;
+      this.entryProtocol = window.location.protocol;
+      this.entryIsIP = this._isIp(this.entryHost);
+      await this.getAllSetting();
+      await this.loadApiTokens();
+      await this.loadInboundTags();
+      while (true) {
+        await PromiseUtil.sleep(1000);
+        this.saveBtnDisable = this.oldAllSetting.equals(this.allSetting);
+      }
+    }
+  });
+</script>
+{{ template "page/body_end" .}}

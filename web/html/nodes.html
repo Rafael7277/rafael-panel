@@ -1,0 +1,432 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' nodes-page'">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-panel-topbar title="Nodes" subtitle="Monitor and synchronize remote panel nodes"></a-panel-topbar>
+    <a-layout-content>
+      <a-spin :spinning="loadingStates.spinning" :delay="300" tip='{{ i18n "loading"}}' size="large">
+        <transition name="list" appear>
+          <a-row v-if="!loadingStates.fetched">
+            <div :style="{ minHeight: 'calc(100vh - 120px)' }"></div>
+          </a-row>
+          <a-row :gutter="[isMobile ? 8 : 16, isMobile ? 0 : 12]" v-else>
+            <a-col>
+              <a-card size="small" :style="{ padding: '16px' }" hoverable>
+                <a-row class="nodes-stats-grid">
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Total Nodes' :value="nodes.length">
+                      <template #prefix>
+                        <a-icon type="cluster"></a-icon>
+                      </template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Online Nodes' :value="onlineCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix>
+                        <a-icon type="check-circle"></a-icon>
+                      </template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Enabled Nodes' :value="enabledCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix>
+                        <a-icon type="api"></a-icon>
+                      </template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Offline Nodes' :value="offlineCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix>
+                        <a-icon type="disconnect"></a-icon>
+                      </template>
+                    </a-custom-statistic>
+                  </a-col>
+                </a-row>
+              </a-card>
+            </a-col>
+
+            <a-col>
+              <a-card hoverable>
+                <template #title>
+                  <a-space direction="horizontal">
+                    <a-button type="primary" icon="plus" @click="openCreate">
+                      <template v-if="!isMobile">Add Node</template>
+                    </a-button>
+                    <a-button icon="sync" :loading="syncingAll" @click="syncAll">
+                      <template v-if="!isMobile">Sync All</template>
+                    </a-button>
+                    <a-button icon="reload" :loading="refreshing" @click="loadNodes">
+                      <template v-if="!isMobile">Refresh</template>
+                    </a-button>
+                  </a-space>
+                </template>
+                <template #extra>
+                  <a-tag color="blue">Bearer token</a-tag>
+                </template>
+
+                <a-space direction="vertical" style="width: 100%;">
+                  <div :style="isMobile ? {} : { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }">
+                    <a-input
+                      v-model.trim="searchKey"
+                      placeholder='{{ i18n "search" }}'
+                      :style="{ maxWidth: '320px' }"
+                      :size="isMobile ? 'small' : ''">
+                    </a-input>
+                    <a-radio-group
+                      v-model="statusFilter"
+                      button-style="solid"
+                      :size="isMobile ? 'small' : ''"
+                      :style="isMobile ? { marginTop: '.5rem', display: 'flex' } : {}">
+                      <a-radio-button value="">All</a-radio-button>
+                      <a-radio-button value="online">Online</a-radio-button>
+                      <a-radio-button value="offline">Offline</a-radio-button>
+                      <a-radio-button value="enabled">Enabled</a-radio-button>
+                    </a-radio-group>
+                  </div>
+
+                  <a-table class="nodes-table"
+                    :columns="isMobile ? mobileColumns : columns"
+                    :row-key="record => record.id"
+                    :data-source="filteredNodes"
+                    :pagination="pagination(filteredNodes)"
+                    :scroll="isMobile ? {} : { x: 1080 }"
+                    :locale='{ emptyText: `{{ i18n "noData" }}` }'
+                    :style="{ marginTop: '10px' }">
+                    <template slot="name" slot-scope="text, record">
+                      <div style="font-weight: 600;">[[ record.name ]]</div>
+                      <div style="opacity: .72;">[[ record.remark || '-' ]]</div>
+                    </template>
+
+                    <template slot="endpoint" slot-scope="text, record">
+                      <div>[[ record.scheme ]]://[[ record.address ]]:[[ record.port ]]</div>
+                      <div style="opacity: .72;">[[ record.basePath || '/' ]]</div>
+                    </template>
+
+                    <template slot="health" slot-scope="text, record">
+                      <a-tag :color="record.status === 'online' ? 'green' : 'red'">
+                        [[ record.status || 'unknown' ]]
+                      </a-tag>
+                      <a-tag v-if="record.enable" color="blue">Enabled</a-tag>
+                      <div style="margin-top: 4px; opacity: .72;">[[ formatLatency(record.latencyMs) ]]</div>
+                    </template>
+
+                    <template slot="versions" slot-scope="text, record">
+                      <div>Xray: [[ record.xrayVersion || '-' ]]</div>
+                      <div>Panel: [[ record.panelVersion || '-' ]]</div>
+                    </template>
+
+                    <template slot="heartbeat" slot-scope="text, record">
+                      [[ formatTime(record.lastHeartbeat) ]]
+                    </template>
+
+                    <template slot="error" slot-scope="text, record">
+                      <span style="color: #cf3c3c;">[[ record.lastError || '-' ]]</span>
+                    </template>
+
+                    <template slot="action" slot-scope="text, record">
+                      <a-dropdown :trigger="['click']">
+                        <a-icon @click="e => e.preventDefault()" type="more"
+                          :style="{ fontSize: '20px', textDecoration: 'solid' }"></a-icon>
+                        <a-menu slot="overlay" @click="a => clickAction(a, record)" :theme="themeSwitcher.currentTheme">
+                          <a-menu-item key="probe">
+                            <a-icon type="api"></a-icon>
+                            Test Connection
+                          </a-menu-item>
+                          <a-menu-item key="sync">
+                            <a-icon type="sync"></a-icon>
+                            Sync Node
+                          </a-menu-item>
+                          <a-menu-item key="edit">
+                            <a-icon type="edit"></a-icon>
+                            {{ i18n "edit" }}
+                          </a-menu-item>
+                          <a-menu-item key="toggle">
+                            <a-icon type="poweroff"></a-icon>
+                            [[ record.enable ? 'Disable' : 'Enable' ]]
+                          </a-menu-item>
+                          <a-menu-item key="delete">
+                            <span :style="{ color: '#FF4D4F' }">
+                              <a-icon type="delete"></a-icon>
+                              {{ i18n "delete" }}
+                            </span>
+                          </a-menu-item>
+                        </a-menu>
+                      </a-dropdown>
+                    </template>
+                  </a-table>
+                </a-space>
+              </a-card>
+            </a-col>
+          </a-row>
+        </transition>
+      </a-spin>
+
+      <a-drawer
+        :title="editing.id ? 'Edit Node' : 'Add Node'"
+        :visible="modalVisible"
+        :width="isMobile ? '100%' : 560"
+        placement="right"
+        :class="themeSwitcher.currentTheme"
+        @close="closeModal">
+        <a-form-model layout="vertical" :model="editing">
+          <a-form-model-item label="Name">
+            <a-input v-model.trim="editing.name"></a-input>
+          </a-form-model-item>
+          <a-form-model-item label="Remark">
+            <a-input v-model.trim="editing.remark"></a-input>
+          </a-form-model-item>
+          <a-row :gutter="12">
+            <a-col :span="8">
+              <a-form-model-item label="Scheme">
+                <a-select v-model="editing.scheme" :dropdown-class-name="themeSwitcher.currentTheme">
+                  <a-select-option value="https">https</a-select-option>
+                  <a-select-option value="http">http</a-select-option>
+                </a-select>
+              </a-form-model-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-model-item label="Address">
+                <a-input v-model.trim="editing.address"></a-input>
+              </a-form-model-item>
+            </a-col>
+            <a-col :span="6">
+              <a-form-model-item label="Port">
+                <a-input-number v-model="editing.port" :min="1" :max="65535" style="width: 100%;"></a-input-number>
+              </a-form-model-item>
+            </a-col>
+          </a-row>
+          <a-form-model-item label="Base Path">
+            <a-input v-model.trim="editing.basePath"></a-input>
+          </a-form-model-item>
+          <a-form-model-item label="API Token">
+            <a-input-password v-model.trim="editing.apiToken"></a-input-password>
+          </a-form-model-item>
+          <a-form-model-item label="Enable">
+            <a-switch v-model="editing.enable"></a-switch>
+          </a-form-model-item>
+        </a-form-model>
+        <div class="node-drawer-footer"><a-button @click="closeModal">Cancel</a-button><a-button type="primary" :loading="saving" @click="saveNode">[[ editing.id ? 'Save node' : 'Add node' ]]</a-button></div>
+      </a-drawer>
+    </a-layout-content>
+  </a-layout>
+</a-layout>
+
+{{template "page/body_scripts" .}}
+{{template "component/aSidebar" .}}
+{{template "component/aThemeSwitch" .}}
+{{template "component/aCustomStatistic" .}}
+
+<script>
+  const emptyNode = () => ({
+    id: 0,
+    name: '',
+    remark: '',
+    scheme: 'https',
+    address: '',
+    port: 443,
+    basePath: '/',
+    apiToken: '',
+    enable: true,
+  });
+
+  const app = new Vue({
+    delimiters: ['[[', ']]'],
+    el: '#app',
+    mixins: [MediaQueryMixin],
+    data: {
+      themeSwitcher,
+      loadingStates: {
+        fetched: false,
+        spinning: false,
+      },
+      refreshing: false,
+      saving: false,
+      syncingAll: false,
+      modalVisible: false,
+      nodes: [],
+      searchKey: '',
+      statusFilter: '',
+      editing: emptyNode(),
+      columns: [
+        { title: 'Name', scopedSlots: { customRender: 'name' } },
+        { title: 'Endpoint', scopedSlots: { customRender: 'endpoint' } },
+        { title: 'Health', scopedSlots: { customRender: 'health' } },
+        { title: 'Versions', scopedSlots: { customRender: 'versions' } },
+        { title: 'Last Sync', scopedSlots: { customRender: 'heartbeat' } },
+        { title: 'Last Error', scopedSlots: { customRender: 'error' } },
+        { title: 'Menu', width: 72, align: 'center', scopedSlots: { customRender: 'action' } },
+      ],
+      mobileColumns: [
+        { title: 'Node', scopedSlots: { customRender: 'name' } },
+        { title: 'Health', scopedSlots: { customRender: 'health' } },
+        { title: 'Menu', width: 72, align: 'center', scopedSlots: { customRender: 'action' } },
+      ],
+    },
+    computed: {
+      onlineCount() {
+        return this.nodes.filter(n => n.status === 'online').length;
+      },
+      enabledCount() {
+        return this.nodes.filter(n => n.enable).length;
+      },
+      offlineCount() {
+        return this.nodes.filter(n => n.status !== 'online').length;
+      },
+      filteredNodes() {
+        return this.nodes.filter(node => {
+          const key = this.searchKey.toLowerCase();
+          const matchesSearch = !key || [node.name, node.remark, node.address, node.basePath, node.status, node.lastError]
+            .filter(Boolean)
+            .some(value => String(value).toLowerCase().includes(key));
+          if (!matchesSearch) {
+            return false;
+          }
+          switch (this.statusFilter) {
+            case 'online':
+              return node.status === 'online';
+            case 'offline':
+              return node.status !== 'online';
+            case 'enabled':
+              return !!node.enable;
+            default:
+              return true;
+          }
+        });
+      },
+    },
+    methods: {
+      pagination(list) {
+        return {
+          pageSize: this.isMobile ? 8 : 10,
+          total: list.length,
+          showSizeChanger: false,
+        };
+      },
+      loading(spinning = true) {
+        this.loadingStates.spinning = spinning;
+      },
+      formatTime(ts) {
+        if (!ts) return '-';
+        const date = new Date(ts * 1000);
+        if (Number.isNaN(date.getTime())) return '-';
+        return date.toLocaleString();
+      },
+      formatLatency(ms) {
+        return ms ? `${ms} ms` : '-';
+      },
+      cloneNode(node) {
+        return Object.assign(emptyNode(), JSON.parse(JSON.stringify(node)));
+      },
+      async loadNodes() {
+        this.refreshing = true;
+        if (!this.loadingStates.fetched) {
+          this.loading(true);
+        }
+        const msg = await HttpUtil.get(`${panelApiPath}/nodes/list`);
+        this.refreshing = false;
+        this.loading(false);
+        if (!msg.success) {
+          return;
+        }
+        this.nodes = Array.isArray(msg.obj) ? msg.obj : [];
+        this.loadingStates.fetched = true;
+      },
+      openCreate() {
+        this.editing = emptyNode();
+        this.modalVisible = true;
+      },
+      openEdit(node) {
+        this.editing = this.cloneNode(node);
+        this.modalVisible = true;
+      },
+      closeModal() {
+        this.modalVisible = false;
+        this.editing = emptyNode();
+      },
+      async saveNode() {
+        this.saving = true;
+        const isEdit = !!this.editing.id;
+        const url = isEdit ? `${panelApiPath}/nodes/update/${this.editing.id}` : `${panelApiPath}/nodes/add`;
+        const msg = await HttpUtil.post(url, this.editing);
+        this.saving = false;
+        if (!msg.success) {
+          return;
+        }
+        this.closeModal();
+        await this.loadNodes();
+      },
+      async probeNode(node) {
+        const msg = await HttpUtil.post(`${panelApiPath}/nodes/probe/${node.id}`);
+        if (!msg.success) {
+          return;
+        }
+        await this.loadNodes();
+      },
+      async syncNode(node) {
+        const msg = await HttpUtil.post(`${panelApiPath}/nodes/sync/${node.id}`);
+        if (!msg.success) {
+          return;
+        }
+        await this.loadNodes();
+      },
+      async syncAll() {
+        this.syncingAll = true;
+        const msg = await HttpUtil.post(`${panelApiPath}/nodes/syncAll`);
+        this.syncingAll = false;
+        if (!msg.success) {
+          return;
+        }
+        await this.loadNodes();
+      },
+      async toggleEnable(node) {
+        const msg = await HttpUtil.post(`${panelApiPath}/nodes/setEnable/${node.id}`, { enable: !node.enable });
+        if (!msg.success) {
+          return;
+        }
+        await this.loadNodes();
+      },
+      removeNode(node) {
+        this.$confirm({
+          title: `Delete node "${node.name}"`,
+          content: 'All mirrored inbounds for this node will be removed from the local panel too.',
+          class: themeSwitcher.currentTheme,
+          okText: '{{ i18n "delete" }}',
+          cancelText: '{{ i18n "cancel" }}',
+          onOk: async () => {
+            const msg = await HttpUtil.post(`${panelApiPath}/nodes/del/${node.id}`);
+            if (!msg.success) {
+              return;
+            }
+            await this.loadNodes();
+          },
+        });
+      },
+      clickAction(action, node) {
+        switch (action.key) {
+          case 'probe':
+            this.probeNode(node);
+            break;
+          case 'sync':
+            this.syncNode(node);
+            break;
+          case 'edit':
+            this.openEdit(node);
+            break;
+          case 'toggle':
+            this.toggleEnable(node);
+            break;
+          case 'delete':
+            this.removeNode(node);
+            break;
+        }
+      },
+    },
+    async mounted() {
+      await this.loadNodes();
+    },
+  });
+</script>
+{{ template "page/body_end" .}}

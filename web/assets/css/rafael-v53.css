@@ -1,0 +1,264 @@
+/* Rafael v53: stable dashboard geometry, readable live metrics, responsive navigation. */
+
+/* Overview resource cards use a fixed shared height. Keep the CPU history button
+   out of the card grid so it cannot create an implicit second row. */
+.overview-resource-grid { align-items: stretch; }
+.overview-resource-grid .overview-meter-card {
+  display: flex;
+  height: 132px !important;
+  min-height: 132px !important;
+  flex-direction: column;
+}
+.overview-resource-grid .overview-meter-card > .ant-card-body {
+  position: relative;
+  display: grid !important;
+  height: 100%;
+  min-height: 0 !important;
+  flex: 1 1 auto;
+  grid-template-columns: 50px minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.overview-meter-action-wrap { position: absolute !important; top: 8px; right: 8px; z-index: 2; }
+.overview-meter-action { position: static !important; width: 26px; min-width: 26px; height: 26px; }
+.overview-meter-copy { min-width: 0; }
+.overview-meter-copy strong { white-space: nowrap; }
+.overview-meter-ring { justify-self: end; }
+
+/* Stretch every card in the bottom metric row to the same grid-row height. */
+.index-page .overview-grid > .ant-col:nth-child(9),
+.index-page .overview-grid > .ant-col:nth-child(10),
+.index-page .overview-grid > .ant-col:nth-child(11) { display: flex; min-width: 0; }
+.index-page .overview-grid > .ant-col:nth-child(9) > .overview-small-card,
+.index-page .overview-grid > .ant-col:nth-child(10) > .overview-small-card,
+.index-page .overview-grid > .ant-col:nth-child(11) > .overview-small-card {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+}
+.index-page .overview-grid > .ant-col:nth-child(9) > .overview-small-card > .ant-card-body,
+.index-page .overview-grid > .ant-col:nth-child(10) > .overview-small-card > .ant-card-body,
+.index-page .overview-grid > .ant-col:nth-child(11) > .overview-small-card > .ant-card-body { flex: 1 1 auto; }
+.overview-feature-icon .anticon { display: inline-flex; align-items: center; justify-content: center; font-size: 23px; }
+
+/* Use an explicit two-column value layout so RAM and goroutine metrics remain
+   visible even when legacy card styles are loaded. */
+.overview-usage-pair { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-height: 60px; }
+.overview-usage-item { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 5px; }
+.overview-usage-item + .overview-usage-item { padding-left: 12px; border-left: 1px solid var(--rafael-border); }
+.overview-usage-label { display: flex; align-items: center; gap: 7px; color: var(--rafael-muted); font-size: 11px; }
+.overview-usage-label .anticon { color: #9c72ff; }
+.overview-usage-item > strong { display: block; color: var(--rafael-text); font-size: 16px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+
+/* Current interface throughput is shown numerically above its history graph. */
+.overview-traffic-live-values { display: flex; justify-content: space-between; gap: 12px; margin: 8px 4px 2px; }
+.overview-traffic-live-values > span { display: inline-flex; align-items: center; gap: 7px; color: var(--rafael-muted); font-size: 11px; }
+.overview-traffic-live-values i { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; }
+.overview-traffic-live-values strong { color: var(--rafael-text); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Reseller summary is a plain CSS grid rather than an Ant Row: its height and
+   bottom gap are independent from Ant's responsive gutters and clearfixes. */
+.resellers-page .reseller-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 24px !important;
+}
+.reseller-summary-grid > .reseller-summary-card {
+  width: 100%;
+  min-width: 0;
+  height: 118px;
+  min-height: 118px;
+  margin: 0;
+}
+.reseller-summary-card .ant-card-body { display: flex; height: 100%; min-height: 0; align-items: center; padding: 16px 18px; box-sizing: border-box; }
+.reseller-summary-card .ant-statistic { min-width: 0; }
+.reseller-summary-card .ant-statistic-title { line-height: 1.35; }
+.reseller-summary-card .ant-statistic-content { white-space: nowrap; }
+.resellers-page .reseller-management-card { position: relative; z-index: 0; clear: both; margin: 0; }
+.reseller-management-card .ant-card-head { min-height: 72px; }
+.reseller-management-card .ant-card-head-wrapper { align-items: center; gap: 16px; }
+.reseller-management-heading { min-width: 230px; }
+.reseller-management-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
+.reseller-management-actions .ant-input-search { width: clamp(200px, 22vw, 300px); }
+.reseller-refresh-button { width: 38px; min-width: 38px; padding: 0; }
+.reseller-table .ant-table-content,
+.reseller-table .ant-table-body { max-width: 100%; overflow-x: auto !important; }
+.reseller-table .ant-table table { min-width: 1032px; table-layout: fixed !important; }
+.reseller-table .ant-table-thead > tr > th { padding: 12px 10px; white-space: nowrap; }
+.reseller-table .ant-table-tbody > tr > td { min-width: 0; padding: 12px 10px; overflow: hidden; vertical-align: middle; }
+.reseller-table .ant-space { display: inline-flex; max-width: 100%; flex-wrap: wrap !important; gap: 5px; }
+.reseller-table .ant-space-item { min-width: 0; }
+.reseller-inbound-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.reseller-inbound-tags .ant-tag { margin: 0; min-width: 30px; text-align: center; }
+.reseller-quota-cell { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+.reseller-quota-cell strong { display: block; color: var(--rafael-text); font-size: 12px; }
+.reseller-quota-cell span { display: block; margin-top: 3px; color: var(--rafael-muted); font-size: 11px; }
+.reseller-quota-cell small { display: block; margin-top: 3px; color: var(--rafael-muted); font-size: 9px; line-height: 1.35; }
+.reseller-permission-tag { margin: 0 !important; }
+.reseller-path-text { display: inline-block; max-width: 100%; overflow: hidden; color: var(--rafael-text); text-overflow: ellipsis; white-space: nowrap; }
+.reseller-row-actions { display: flex; align-items: center; gap: 6px; }
+.reseller-row-actions .reseller-icon-action { width: 34px; min-width: 34px; height: 34px; padding: 0; }
+.reseller-editor-drawer .ant-drawer-content { display: flex; flex-direction: column; }
+.reseller-editor-drawer .ant-drawer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 22px 82px; }
+.reseller-editor-drawer .ant-form-item { margin-bottom: 14px; }
+.reseller-status-control { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px 10px; }
+.reseller-status-control small { grid-column: 2; color: var(--rafael-muted); line-height: 1.4; }
+.reseller-drawer-footer { position: absolute; right: 0; bottom: 0; left: 0; z-index: 2; padding: 12px 20px max(12px, env(safe-area-inset-bottom)); }
+
+/* Mobile Xray tabs switch to the supported top orientation and scroll as a
+   visible horizontal rail. The drawer is teleported outside #app by Ant Design. */
+@media (max-width: 900px) {
+  #app:not(.login-app) .ant-sidebar { position: static; flex: 0 0 0 !important; width: 0 !important; min-width: 0 !important; height: 0; overflow: visible; }
+  #app:not(.login-app) .ant-sidebar > .ant-layout-sider { display: none !important; }
+  #app:not(.login-app) #content-layout { width: auto !important; flex: 1 1 auto; min-width: 0; }
+  #app:not(.login-app) .rafael-mobile-menu-trigger { position: fixed; top: 12px; left: 12px; z-index: 1200; display: inline-flex !important; width: 40px; min-width: 40px; height: 40px; align-items: center; justify-content: center; padding: 0; border: 1px solid rgba(155,122,255,.4) !important; border-radius: 12px !important; background: #19233a !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top { display: block; width: 100%; }
+  .xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-bar { float: none; width: 100%; margin: 0 0 10px; padding: 0 0 8px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--rafael-border); }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-container { width: 100%; height: auto; overflow-x: auto !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-wrap { overflow: visible !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav { display: flex !important; width: max-content !important; transform: none !important; white-space: nowrap; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tab { display: inline-flex; min-width: 142px; min-height: 48px; margin: 0 6px 0 0; padding: 7px 9px; white-space: nowrap; }
+  .xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-content { display: block; width: 100%; margin-left: 0 !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tabpane { width: 100%; padding-left: 0 !important; }
+
+  .resellers-page .reseller-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px !important; }
+  .reseller-summary-grid > .reseller-summary-card { height: 94px; min-height: 94px; }
+  .reseller-summary-card .ant-card-body { padding: 12px; }
+  .reseller-management-card .ant-card-head-wrapper { flex-wrap: wrap; }
+  .reseller-management-actions { width: 100%; justify-content: flex-start; }
+  .reseller-management-actions .ant-input-search { flex: 1 1 auto; width: auto; min-width: 0; }
+  .reseller-editor-drawer .ant-drawer-body { padding: 16px 15px 84px; }
+  .reseller-drawer-footer { position: fixed; padding: 10px 14px max(10px, env(safe-area-inset-bottom)); }
+  .reseller-drawer-footer .ant-btn { flex: 1 1 0; }
+
+  .overview-resource-grid .overview-meter-card { height: 96px !important; min-height: 96px !important; }
+  .overview-resource-grid .overview-meter-card > .ant-card-body { grid-template-columns: 42px minmax(0, 1fr) 48px; gap: 9px; padding: 11px 13px; }
+  .overview-traffic-live-values { flex-wrap: wrap; }
+  .overview-traffic-live-values > span { flex: 1 1 180px; }
+}
+
+@media (max-width: 560px) {
+  .resellers-page .reseller-summary-grid { gap: 8px; }
+  .reseller-summary-grid > .reseller-summary-card { height: 86px; min-height: 86px; }
+  .reseller-summary-card .ant-card-body { padding: 10px; }
+  .reseller-summary-card .ant-statistic-title { font-size: 10px; }
+  .reseller-summary-card .ant-statistic-content { font-size: 19px; }
+  .reseller-management-card .ant-card-head { padding-inline: 13px; }
+  .reseller-management-card .ant-card-head-title { width: 100%; padding-bottom: 4px; }
+  .reseller-management-card .ant-card-extra { width: 100%; float: none; padding: 0 0 10px; }
+  .reseller-management-actions .ant-btn-primary { padding-inline: 9px; font-size: 11px; }
+  .reseller-refresh-button { flex: 0 0 36px !important; }
+  .overview-traffic-live-values { display: grid; grid-template-columns: 1fr; gap: 5px; }
+  .overview-usage-pair { gap: 8px; }
+  .overview-usage-item + .overview-usage-item { padding-left: 8px; }
+}
+
+/* The mobile navigation drawer is attached to <body>, so theme it by its own
+   wrapper classes instead of selectors rooted at #app. */
+.rafael-mobile-drawer.dark .ant-drawer-content {
+  color: #eef2fb;
+  border-right: 1px solid rgba(145,164,201,.18);
+  background: linear-gradient(180deg, #111a2c, #0c1322) !important;
+}
+.rafael-mobile-drawer.dark .ant-drawer-body { height: 100%; overflow-y: auto; padding: 18px 14px 24px; }
+.rafael-mobile-drawer.dark .ant-menu { color: #aab6cc; border-right: 0; background: transparent !important; }
+.rafael-mobile-drawer.dark .ant-menu-item { height: 46px; line-height: 46px; margin: 4px 0; border-radius: 11px; }
+.rafael-mobile-drawer.dark .ant-menu-item-selected { color: #fff !important; background: linear-gradient(105deg, rgba(132,78,255,.32), rgba(132,78,255,.12)) !important; box-shadow: inset 3px 0 #a06dff; }
+.rafael-mobile-menu-trigger { color: #eee9ff !important; border: 1px solid rgba(155,122,255,.4) !important; background: #19233a !important; box-shadow: 0 7px 22px rgba(4,8,18,.28); }
+
+/* Soft ivory light palette with muted green actions and stronger text contrast. */
+#app.light:not(.login-app) {
+  --rafael-bg: #f2f3ec;
+  --rafael-side: #e9eee5;
+  --rafael-surface: #fffef9;
+  --rafael-surface-raised: #f7f8f2;
+  --rafael-border: #d5ded2;
+  --rafael-text: #263a31;
+  --rafael-muted: #61746a;
+  --rafael-green: #2f8f6d;
+  color: var(--rafael-text);
+  background: var(--rafael-bg);
+}
+#app.light:not(.login-app) #content-layout,
+#app.light:not(.login-app) #content-layout > .ant-layout-content,
+#app.light:not(.login-app) .ant-layout-content { color: var(--rafael-text); background: var(--rafael-bg); }
+#app.light:not(.login-app) .ant-layout-sider { border-right: 1px solid var(--rafael-border); background: var(--rafael-side) !important; }
+#app.light:not(.login-app) .rafael-topbar { color: var(--rafael-text); border-bottom-color: var(--rafael-border); background: #f8f9f3; }
+#app.light:not(.login-app) .rafael-topbar h1,
+#app.light:not(.login-app) .rafael-brand-copy strong { color: #263a31; }
+#app.light:not(.login-app) .rafael-topbar p,
+#app.light:not(.login-app) .rafael-secure-pill,
+#app.light:not(.login-app) .rafael-topbar-eyebrow,
+#app.light:not(.login-app) .rafael-brand-copy small { color: #5c7467; }
+#app.light:not(.login-app) .rafael-topbar-avatar { color: #277254; border-color: #cbded0; background: #e5efe7; }
+#app.light:not(.login-app) .ant-card,
+#app.light:not(.login-app) .ant-tabs,
+#app.light:not(.login-app) .ant-alert { color: var(--rafael-text); border-color: var(--rafael-border); background: var(--rafael-surface); box-shadow: 0 7px 20px rgba(46,73,57,.055); }
+#app.light:not(.login-app) .ant-card-head { color: var(--rafael-text); border-bottom-color: var(--rafael-border); background: #fafbf6; }
+#app.light:not(.login-app) .ant-card-head-title,
+#app.light:not(.login-app) .ant-card-body,
+#app.light:not(.login-app) .ant-statistic-content { color: var(--rafael-text); }
+#app.light:not(.login-app) .ant-statistic-title,
+#app.light:not(.login-app) .overview-meter-title,
+#app.light:not(.login-app) .overview-usage-label,
+#app.light:not(.login-app) .overview-live-row,
+#app.light:not(.login-app) .overview-traffic-live-values > span { color: var(--rafael-muted); }
+#app.light:not(.login-app) .overview-meter-copy strong,
+#app.light:not(.login-app) .overview-usage-item > strong,
+#app.light:not(.login-app) .overview-traffic-live-values strong,
+#app.light:not(.login-app) .overview-live-row strong { color: #263a31; }
+#app.light:not(.login-app) .ant-menu { color: #52695d; background: transparent !important; }
+#app.light:not(.login-app) .ant-menu-item-selected,
+#app.light:not(.login-app) .ant-menu-item-selected:hover { color: #23694e !important; background: linear-gradient(100deg, #dcece0, #eaf2e9) !important; box-shadow: inset 3px 0 #368964; }
+#app.light:not(.login-app) .ant-menu-item:hover { color: #23694e; background: #e3ece2; }
+#app.light:not(.login-app) .ant-table,
+#app.light:not(.login-app) .ant-table table { color: var(--rafael-text); background: var(--rafael-surface); }
+#app.light:not(.login-app) .ant-table-thead > tr > th { color: #40594b; border-bottom-color: var(--rafael-border); background: #edf2e9; }
+#app.light:not(.login-app) .ant-table-tbody > tr > td { color: #2d4237; border-bottom-color: #e1e7dc; }
+#app.light:not(.login-app) .ant-table-tbody > tr:hover > td { background: #f4f7ef; }
+#app.light:not(.login-app) .ant-input,
+#app.light:not(.login-app) .ant-input-number,
+#app.light:not(.login-app) .ant-input-affix-wrapper,
+#app.light:not(.login-app) .ant-select-selection,
+#app.light:not(.login-app) .ant-picker { color: #293e33; border-color: #cdd9cd; background: #fffefb; }
+#app.light:not(.login-app) .ant-input::placeholder { color: #79887e; }
+#app.light:not(.login-app) .ant-form-item-label > label { color: #40594b; }
+#app.light:not(.login-app) .ant-btn:not(.ant-btn-primary) { color: #385849; border-color: #cdd9cd; background: #fffefb; }
+#app.light:not(.login-app) .ant-btn-primary { color: #fff; border-color: #328966; background: #328966; box-shadow: 0 5px 14px rgba(50,137,102,.16); }
+#app.light:not(.login-app) .ant-btn-primary:hover { border-color: #267653; background: #267653; }
+#app.light:not(.login-app) .rafael-mobile-menu-trigger { color: #28674e !important; border-color: #c8d8cb !important; background: #f7f8f2 !important; box-shadow: 0 7px 20px rgba(46,73,57,.1); }
+#app.light:not(.login-app) .reseller-summary-card .ant-statistic-content-prefix,
+#app.light:not(.login-app) .reseller-permission-tag.is-enabled { color: #2c805e; }
+#app.light:not(.login-app) .reseller-summary-card .ant-statistic-title,
+#app.light:not(.login-app) .reseller-quota-cell small,
+#app.light:not(.login-app) .reseller-quota-cell span { color: #61746a; }
+#app.light:not(.login-app) .reseller-drawer-footer { border-top-color: var(--rafael-border); background: var(--rafael-surface); }
+.reseller-editor-drawer.light .ant-drawer-content { color: #263a31; background: #fffef9; }
+.reseller-editor-drawer.light .ant-drawer-header { border-bottom-color: #d5ded2; background: #f8f9f3; }
+.reseller-editor-drawer.light .ant-drawer-title,
+.reseller-editor-drawer.light .ant-drawer-body { color: #263a31; }
+.reseller-editor-drawer.light .ant-form-item-label > label { color: #40594b; }
+.reseller-editor-drawer.light .ant-input,
+.reseller-editor-drawer.light .ant-input-number,
+.reseller-editor-drawer.light .ant-input-affix-wrapper,
+.reseller-editor-drawer.light .ant-select-selection { color: #293e33; border-color: #cdd9cd; background: #fffefb; }
+.reseller-editor-drawer.light .ant-drawer-footer { border-top-color: #d5ded2; background: #fffef9; }
+.rafael-mobile-drawer.light .ant-drawer-content { color: #263a31; border-right: 1px solid #d5ded2; background: linear-gradient(180deg, #f9faf5, #edf2e9) !important; }
+.rafael-mobile-drawer.light .ant-drawer-body { height: 100%; overflow-y: auto; padding: 18px 14px 24px; }
+.rafael-mobile-drawer.light .ant-menu { color: #52695d; border-right: 0; background: transparent !important; }
+.rafael-mobile-drawer.light .ant-menu-item-selected { color: #23694e !important; background: #dcece0 !important; box-shadow: inset 3px 0 #368964; }
+
+@media (max-width: 900px) {
+  .overview-resource-grid .overview-meter-card { height: 96px !important; min-height: 96px !important; }
+  .overview-resource-grid .overview-meter-card > .ant-card-body { min-height: 0 !important; grid-template-columns: 42px minmax(0, 1fr) 48px; padding: 10px 12px; }
+  .overview-meter-icon { width: 40px; height: 40px; }
+  .overview-meter-ring,
+  .overview-meter-ring .ant-progress-inner { width: 46px !important; height: 46px !important; }
+}

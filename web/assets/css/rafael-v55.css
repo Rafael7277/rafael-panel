@@ -1,0 +1,183 @@
+/* Rafael v55: functional inbound modal mounting and usable phone layouts. */
+
+/* The legacy login stylesheet has a more specific teal rule. Keep the submit
+   control on the Rafael violet action palette in both login themes. */
+#app.login-app.dark .ant-btn-primary-login,
+#app.login-app.light .ant-btn-primary-login {
+  width: 100% !important;
+  height: 50px !important;
+  color: #fff !important;
+  border: 1px solid #8751ff !important;
+  border-radius: 12px !important;
+  background: linear-gradient(110deg, #9657ff, #6835e6) !important;
+  background-image: linear-gradient(110deg, #9657ff, #6835e6) !important;
+  box-shadow: 0 8px 22px rgba(111, 59, 226, .25) !important;
+  text-shadow: none !important;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+#app.login-app.dark .ant-btn-primary-login:hover,
+#app.login-app.dark .ant-btn-primary-login:focus,
+#app.login-app.light .ant-btn-primary-login:hover,
+#app.login-app.light .ant-btn-primary-login:focus {
+  color: #fff !important;
+  border-color: #ad83ff !important;
+  background: linear-gradient(110deg, #a36fff, #7849f0) !important;
+  background-image: linear-gradient(110deg, #a36fff, #7849f0) !important;
+  box-shadow: 0 10px 25px rgba(111, 59, 226, .32) !important;
+  transform: translateY(-1px);
+}
+#app.login-app .login-submit-wrap {
+  width: 100%;
+  height: 50px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: width .16s ease;
+}
+#app.login-app .login-submit-wrap .ant-btn-primary-login { display: inline-flex; align-items: center; justify-content: center; }
+
+/* A card list replaces the compressed multi-column Ant table on phones. */
+#app.inbounds-page .inbound-mobile-list { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 10px; margin-top: 10px; }
+#app.inbounds-page .inbound-mobile-card {
+  min-width: 0;
+  padding: 13px;
+  overflow: hidden;
+  color: #e8edf8;
+  border: 1px solid #29364e;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #172237, #131d30);
+  box-shadow: 0 6px 16px rgba(2, 7, 17, .13);
+}
+#app.inbounds-page .inbound-mobile-card-head,
+#app.inbounds-page .inbound-mobile-identity,
+#app.inbounds-page .inbound-mobile-actions,
+#app.inbounds-page .inbound-mobile-client-row,
+#app.inbounds-page .inbound-mobile-client-row > div { display: flex; align-items: center; }
+#app.inbounds-page .inbound-mobile-card-head { justify-content: space-between; gap: 10px; }
+#app.inbounds-page .inbound-mobile-identity { min-width: 0; flex-wrap: wrap; gap: 7px; }
+#app.inbounds-page .inbound-mobile-id { color: #abb8cf; font-size: 12px; font-weight: 700; }
+#app.inbounds-page .inbound-mobile-card .ant-tag { margin: 0; }
+#app.inbounds-page .inbound-mobile-card .inbound-status-cell { flex: 0 0 auto; gap: 7px; }
+#app.inbounds-page .inbound-mobile-card .inbound-status-pill { padding: 3px 7px; font-size: 10px; }
+#app.inbounds-page .inbound-mobile-remark { margin: 9px 0 11px; overflow-wrap: anywhere; color: #f0f3fb; font-size: 15px; font-weight: 700; line-height: 1.35; }
+#app.inbounds-page .inbound-mobile-meta,
+#app.inbounds-page .inbound-mobile-traffic { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#app.inbounds-page .inbound-mobile-meta > span,
+#app.inbounds-page .inbound-mobile-traffic > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+#app.inbounds-page .inbound-mobile-meta small,
+#app.inbounds-page .inbound-mobile-traffic small { color: #91a0ba; font-size: 10px; }
+#app.inbounds-page .inbound-mobile-meta strong,
+#app.inbounds-page .inbound-mobile-traffic strong { overflow-wrap: anywhere; color: #e5ebf7; font-size: 12px; font-weight: 650; }
+#app.inbounds-page .inbound-mobile-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+#app.inbounds-page .inbound-mobile-traffic { padding: 10px 0 0; border-top: 1px solid rgba(122, 143, 179, .16); }
+#app.inbounds-page .inbound-mobile-traffic > span:last-child { grid-column: 1 / -1; }
+#app.inbounds-page .inbound-mobile-actions { flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+#app.inbounds-page .inbound-mobile-actions .ant-btn { min-width: 34px; height: 34px; padding-inline: 9px; }
+#app.inbounds-page .inbound-mobile-actions .ant-dropdown { margin-left: auto; }
+#app.inbounds-page .inbound-mobile-clients { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(122, 143, 179, .16); }
+#app.inbounds-page .inbound-mobile-client-row { min-width: 0; justify-content: space-between; gap: 8px; padding: 8px 9px; border: 1px solid rgba(122, 143, 179, .15); border-radius: 9px; background: rgba(7, 13, 25, .2); }
+#app.inbounds-page .inbound-mobile-client-row > div { min-width: 0; flex-wrap: wrap; gap: 8px; }
+#app.inbounds-page .inbound-mobile-client-row strong { max-width: 210px; overflow-wrap: anywhere; color: #e8edf8; font-size: 11px; }
+#app.inbounds-page .inbound-mobile-client-row span { font-size: 10px; }
+#app.inbounds-page .inbound-mobile-client-row .is-enabled { color: #48d6a1; }
+#app.inbounds-page .inbound-mobile-client-row .is-disabled { color: #a4afc1; }
+#app.light.inbounds-page .inbound-mobile-card { color: #293b32; border-color: #d8dfd4; background: linear-gradient(145deg, #fffefa, #f5f5ed); box-shadow: 0 5px 15px rgba(48, 68, 54, .06); }
+#app.light.inbounds-page .inbound-mobile-id,
+#app.light.inbounds-page .inbound-mobile-meta small,
+#app.light.inbounds-page .inbound-mobile-traffic small { color: #62746a; }
+#app.light.inbounds-page .inbound-mobile-remark,
+#app.light.inbounds-page .inbound-mobile-meta strong,
+#app.light.inbounds-page .inbound-mobile-traffic strong,
+#app.light.inbounds-page .inbound-mobile-client-row strong { color: #2d4036; }
+#app.light.inbounds-page .inbound-mobile-traffic,
+#app.light.inbounds-page .inbound-mobile-clients { border-color: #dfe5db; }
+#app.light.inbounds-page .inbound-mobile-client-row { border-color: #dfe5db; background: #f5f6ef; }
+
+/* Xray tab panes and tables keep their own width and scroll locally. */
+.xray-page,
+.xray-page #content-layout,
+.xray-page .xray-page-layout,
+.xray-page .xray-config-workspace,
+.xray-page .xray-config-tabs,
+.xray-page .xray-config-tabs > .ant-tabs-content,
+.xray-page .xray-config-tabs .ant-tabs-tabpane { min-width: 0; }
+.xray-page .xray-config-tabs .ant-table-wrapper { width: 100%; max-width: 100%; min-width: 0; }
+.xray-page .xray-config-tabs .ant-table-content,
+.xray-page .xray-config-tabs .ant-table-body { max-width: 100%; overflow-x: auto !important; }
+.xray-page .xray-config-tabs .ant-table table { min-width: max-content; }
+
+/* Xray dialogs render under body, so use their explicit wrapper class. */
+@media (max-width: 767px) {
+  .ant-modal-wrap.rafael-xray-form-modal { overflow-y: auto; padding: 8px 0; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal {
+    top: 0 !important;
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    margin: 8px auto;
+    padding-bottom: 0;
+  }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal-content { display: flex; max-height: calc(100dvh - 32px); flex-direction: column; overflow: hidden; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal-body { min-height: 0; max-height: calc(100dvh - 150px); overflow: auto; padding: 14px; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal-header,
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal-footer { flex: 0 0 auto; padding: 13px 14px; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-form-item { margin-bottom: 14px; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-form-item-label,
+  .ant-modal-wrap.rafael-xray-form-modal .ant-form-item-control-wrapper { float: none; width: 100%; max-width: 100%; padding: 0; text-align: left; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-form-item-label { padding-bottom: 4px; white-space: normal; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-form-item-label > label { height: auto; white-space: normal; line-height: 1.4; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-select,
+  .ant-modal-wrap.rafael-xray-form-modal .ant-input-number,
+  .ant-modal-wrap.rafael-xray-form-modal .ant-picker,
+  .ant-modal-wrap.rafael-xray-form-modal .ant-input-group-wrapper { width: 100%; max-width: 100%; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-input-group-wrapper .ant-input { min-width: 0; }
+
+  .xray-page .xray-command-card { display: flex; min-width: 0; flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .xray-page .xray-command-copy { min-width: 0; flex: 1 1 170px; }
+  .xray-page .xray-command-health { min-width: 0; flex: 1 1 100%; }
+  .xray-page .xray-command-actions { display: flex; width: 100%; min-width: 0; flex-wrap: wrap; gap: 7px; margin-left: 0; }
+  .xray-page .xray-command-actions .ant-btn { min-width: 0; flex: 1 1 110px; }
+  .xray-page .xray-config-workspace { display: block; width: 100%; }
+  .xray-page .xray-nav-toolbar { display: none; }
+  .xray-page .xray-config-tabs.ant-tabs-top { display: block; width: 100%; }
+  .xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-bar { float: none; width: 100% !important; margin: 0 0 10px; padding: 0 0 7px; overflow: hidden; border-right: 0; border-bottom: 1px solid var(--rafael-border); }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-container { width: 100%; height: auto; overflow-x: auto !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-wrap { overflow: visible !important; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav { display: flex !important; width: max-content !important; transform: none !important; white-space: nowrap; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tab { display: inline-flex; width: auto !important; min-width: 142px !important; min-height: 48px; margin: 0 6px 0 0; padding: 7px 9px; white-space: nowrap; }
+  .xray-page .xray-config-tabs.is-nav-collapsed.ant-tabs-top > .ant-tabs-bar { flex-basis: auto !important; width: 100% !important; }
+  .xray-page .xray-config-tabs.is-nav-collapsed .xray-tab-label > span,
+  .xray-page .xray-config-tabs.is-nav-collapsed .xray-tab-label > b { display: flex !important; }
+  .xray-page .xray-config-tabs .xray-tab-label { display: grid; grid-template-columns: 20px minmax(0, 1fr) 20px; gap: 7px; min-width: 0; }
+  .xray-page .xray-config-tabs .xray-tab-label > .anticon { margin: 0; }
+  .xray-page .xray-config-tabs .xray-tab-label > span { min-width: 0; flex-direction: column; }
+  .xray-page .xray-config-tabs .xray-tab-label strong { font-size: 11px; }
+  .xray-page .xray-config-tabs .xray-tab-label small { display: block; font-size: 9px; }
+  .xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-content { display: block; width: 100%; margin-left: 0 !important; padding: 4px 0; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tabpane { width: 100%; padding: 8px 0 0 !important; }
+  .xray-page .xray-config-tabs .ant-form { width: 100%; min-width: 0; }
+  .xray-page .xray-config-tabs .ant-form-item { margin-bottom: 13px; }
+  .xray-page .xray-config-tabs .ant-table-wrapper { overflow: hidden; }
+  .xray-page .xray-config-tabs .ant-table table { min-width: 680px; }
+  .xray-page .xray-config-tabs .ant-table-small table { min-width: 540px; }
+  .xray-page .CodeMirror { max-width: 100%; font-size: 12px; }
+}
+
+@media (max-width: 560px) {
+  #app.inbounds-page .inbound-mobile-card { padding: 11px; }
+  #app.inbounds-page .inbound-mobile-card .inbound-status-pill { max-width: 74px; }
+  #app.inbounds-page .inbound-mobile-actions { gap: 6px; }
+  #app.inbounds-page .inbound-mobile-actions .ant-btn { padding-inline: 7px; font-size: 11px; }
+  .xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tab { min-width: 132px !important; }
+  .ant-modal-wrap.rafael-xray-form-modal .ant-modal-body { padding: 12px; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-body { padding: 12px; }
+}
+
+/* Carry the responsive form treatment into the Inbound create/edit dialog. */
+@media (max-width: 767px) {
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal { width: calc(100vw - 20px) !important; max-width: calc(100vw - 20px) !important; margin: 8px auto; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-body { max-height: calc(100dvh - 150px); overflow: auto; padding: 14px; }
+  .ant-modal-wrap.rafael-inbound-form-modal .inbound-base-form .ant-form-item-label,
+  .ant-modal-wrap.rafael-inbound-form-modal .inbound-base-form .ant-form-item-control-wrapper { float: none; width: 100%; max-width: 100%; padding: 0; text-align: left; }
+  .ant-modal-wrap.rafael-inbound-form-modal .inbound-base-form .ant-form-item-label { padding-bottom: 4px; white-space: normal; }
+  .ant-modal-wrap.rafael-inbound-form-modal .inbound-base-form .ant-select,
+  .ant-modal-wrap.rafael-inbound-form-modal .inbound-base-form .ant-input-number { width: 100%; max-width: 100%; }
+}

@@ -1,0 +1,284 @@
+/* Rafael v57: give the portaled Inbound dialog the active Rafael theme. */
+
+/* Xray content and its two navigation rails must fit the available width.
+   Compact routing/outbound columns keep their details reachable without a
+   horizontal table scrollbar. */
+#app.xray-page,
+#app.xray-page #content-layout,
+#app.xray-page #content-layout > .ant-layout-content,
+#app.xray-page .xray-page-layout,
+#app.xray-page .xray-page-layout > .ant-col,
+#app.xray-page .xray-config-workspace,
+#app.xray-page .xray-config-tabs,
+#app.xray-page .xray-config-tabs > .ant-tabs-content,
+#app.xray-page .xray-config-tabs .ant-tabs-tabpane {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+#app.xray-page #content-layout { flex: 1 1 0; width: 0; }
+#app.xray-page #content-layout > .ant-layout-content { width: 100%; }
+#app.xray-page .xray-config-tabs .ant-space,
+#app.xray-page .xray-config-tabs .ant-space-item,
+#app.xray-page .xray-config-tabs .ant-table-wrapper { width: 100%; max-width: 100%; min-width: 0; }
+#app.xray-page .xray-config-tabs .ant-table-content,
+#app.xray-page .xray-config-tabs .ant-table-body { width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden !important; }
+#app.xray-page .xray-config-tabs .ant-table { width: 100%; max-width: 100%; min-width: 0; overflow: hidden; }
+#app.xray-page .xray-config-tabs .ant-table table {
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+#app.xray-page .xray-config-tabs .ant-table col { width: auto !important; min-width: 0 !important; max-width: 100%; }
+#app.xray-page .xray-config-tabs .ant-table-thead > tr > th,
+#app.xray-page .xray-config-tabs .ant-table-tbody > tr > td {
+  min-width: 0;
+  max-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#app.xray-page .xray-config-tabs .xray-routing-table .ant-table-thead > tr > th,
+#app.xray-page .xray-config-tabs .xray-routing-table .ant-table-tbody > tr > td,
+#app.xray-page .xray-config-tabs .xray-outbounds-table .ant-table-thead > tr > th,
+#app.xray-page .xray-config-tabs .xray-outbounds-table .ant-table-tbody > tr > td { padding: 9px 8px; }
+#app.xray-page .xray-config-tabs .xray-routing-table col:first-child,
+#app.xray-page .xray-config-tabs .xray-outbounds-table col:first-child { width: 12% !important; }
+#app.xray-page .xray-config-tabs .xray-routing-table col:nth-child(2),
+#app.xray-page .xray-config-tabs .xray-outbounds-table col:nth-child(2) { width: 88% !important; }
+#app.xray-page .xray-rule-compact { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 8px 12px; }
+#app.xray-page .xray-rule-compact > div { display: grid; min-width: 0; gap: 2px; }
+#app.xray-page .xray-rule-compact small { color: var(--text-secondary, #8190a8); font-size: 11px; }
+#app.xray-page .xray-rule-compact strong { min-width: 0; overflow-wrap: anywhere; }
+#app.xray-page .xray-config-tabs .xray-outbound-compact { display: grid; min-width: 0; justify-items: start; gap: 4px; }
+#app.xray-page .xray-config-tabs .xray-outbound-compact small { display: block; max-width: 100%; overflow-wrap: anywhere; font-size: 10px; line-height: 1.25; }
+#app.xray-page .xray-outbound-toolbar,
+#app.xray-page .xray-outbound-toolbar > .ant-col,
+#app.xray-page .xray-outbound-toolbar .ant-space { min-width: 0; max-width: 100%; }
+#app.xray-page .xray-outbound-toolbar .ant-space { flex-wrap: wrap; }
+#app.xray-page .xray-config-tabs .ant-form,
+#app.xray-page .xray-config-tabs .ant-form-item,
+#app.xray-page .xray-config-tabs .ant-form-item-control-wrapper,
+#app.xray-page .xray-config-tabs .ant-input,
+#app.xray-page .xray-config-tabs .ant-input-number,
+#app.xray-page .xray-config-tabs .ant-select,
+#app.xray-page .xray-config-tabs .ant-picker,
+#app.xray-page .xray-config-tabs .CodeMirror { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+
+/* The previous phone treatment made the seven section tabs a horizontal strip.
+   A compact two-column tab grid keeps every section visible without sideways
+   scrolling, even when the mobile app sidebar is also present. */
+@media (max-width: 768px) {
+  #app.xray-page #content-layout > .ant-layout-content { overflow-x: clip; }
+  #app.xray-page .ant-row.xray-page-layout { width: 100%; margin-right: 0 !important; margin-left: 0 !important; }
+  #app.xray-page .xray-config-workspace,
+  #app.xray-page .xray-config-tabs.ant-tabs-top,
+  #app.xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-content,
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tabpane { width: 100%; }
+  #app.xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-bar {
+    width: 100% !important;
+    max-width: 100%;
+    overflow: visible !important;
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-container,
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-wrap,
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav-scroll {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    overflow: visible !important;
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100%;
+    transform: none !important;
+    white-space: normal;
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-nav > div:first-child {
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    transform: none !important;
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tab {
+    display: flex !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    margin: 0 !important;
+    padding: 6px 5px !important;
+    white-space: normal;
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-tab-active {
+    border-radius: 9px;
+    background: rgba(125, 78, 241, .12);
+  }
+  #app.xray-page .xray-config-tabs.ant-tabs-top .ant-tabs-ink-bar { display: none !important; }
+  #app.xray-page .xray-config-tabs .xray-tab-label {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: 18px minmax(0, 1fr) 18px;
+    gap: 4px;
+  }
+  #app.xray-page .xray-config-tabs .xray-tab-label > span { display: flex !important; min-width: 0; flex-direction: column; }
+  #app.xray-page .xray-config-tabs .xray-tab-label strong { font-size: 10px; line-height: 1.25; overflow-wrap: anywhere; }
+  #app.xray-page .xray-config-tabs .xray-tab-label small { display: block !important; font-size: 8px; line-height: 1.2; overflow-wrap: anywhere; }
+  #app.xray-page .xray-config-tabs .xray-tab-label > b { display: flex !important; width: 18px; height: 18px; font-size: 9px; }
+  #app.xray-page .xray-config-tabs.ant-tabs-top > .ant-tabs-content { margin-left: 0 !important; }
+  #app.xray-page .xray-config-tabs .xray-routing-table col:first-child,
+  #app.xray-page .xray-config-tabs .xray-outbounds-table col:first-child { width: 18% !important; }
+  #app.xray-page .xray-config-tabs .xray-routing-table col:nth-child(2),
+  #app.xray-page .xray-config-tabs .xray-outbounds-table col:nth-child(2) { width: 82% !important; }
+  #app.xray-page .xray-config-tabs .xray-routing-table .ant-table-thead > tr > th,
+  #app.xray-page .xray-config-tabs .xray-routing-table .ant-table-tbody > tr > td,
+  #app.xray-page .xray-config-tabs .xray-outbounds-table .ant-table-thead > tr > th,
+  #app.xray-page .xray-config-tabs .xray-outbounds-table .ant-table-tbody > tr > td { padding: 6px 4px; font-size: 10px; line-height: 1.35; }
+  #app.xray-page .xray-config-tabs .xray-routing-table .ant-table-tbody > tr > td:first-child,
+  #app.xray-page .xray-config-tabs .xray-outbounds-table .ant-table-tbody > tr > td:first-child { white-space: nowrap; }
+  #app.xray-page .xray-rule-compact { gap: 6px; }
+  #app.xray-page .xray-rule-compact small { font-size: 9px; }
+  #app.xray-page .xray-rule-compact strong { font-size: 10px; }
+  #app.xray-page .xray-outbound-toolbar .ant-space { display: flex; flex-wrap: wrap; }
+  #app.xray-page .xray-outbound-toolbar .ant-col:last-child { text-align: left !important; margin-top: 6px; }
+  #app.xray-page .xray-config-tabs .xray-outbound-compact small { font-size: 9px; }
+}
+
+.ant-modal-wrap.rafael-inbound-form-modal {
+  overflow-y: auto;
+  padding: 18px 12px;
+}
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal {
+  width: min(980px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  margin: 0 auto;
+  padding-bottom: 0;
+}
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal-content {
+  display: flex;
+  max-height: calc(100dvh - 36px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 16px;
+}
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal-header,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal-footer { flex: 0 0 auto; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.ant-modal-wrap.rafael-inbound-form-modal .ant-modal-title { font-size: 16px; font-weight: 650; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-form-item { min-width: 0; margin-bottom: 14px; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label > label { line-height: 1.45; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-select,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-input-number,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-picker { width: 100%; max-width: 100%; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-input,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-input-number,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-select-selection,
+.ant-modal-wrap.rafael-inbound-form-modal .ant-picker {
+  min-height: 38px;
+  border-radius: 9px;
+}
+.ant-modal-wrap.rafael-inbound-form-modal .ant-btn { min-height: 36px; border-radius: 9px; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-btn-primary { font-weight: 600; }
+.ant-modal-wrap.rafael-inbound-form-modal .ant-switch { min-width: 38px; }
+
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-content {
+  color: #eef2fb;
+  border-color: rgba(145, 164, 201, .2);
+  background: #131d31;
+  box-shadow: 0 24px 72px rgba(2, 8, 20, .48);
+}
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-header,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-footer {
+  border-color: rgba(145, 164, 201, .17);
+  background: #172238;
+}
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-title,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label > label { color: #e6ecf7; }
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-input,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-input-number,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-select-selection,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-picker {
+  color: #eef2fb;
+  border-color: rgba(145, 164, 201, .22);
+  background: #10192b;
+}
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-input::placeholder { color: #8795ad; }
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-btn:not(.ant-btn-primary) {
+  color: #dce4f2;
+  border-color: rgba(145, 164, 201, .25);
+  background: #1a263c;
+}
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-btn-primary,
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-switch-checked { border-color: #8150f5; background: #7543e8; }
+body.dark .ant-modal-wrap.rafael-inbound-form-modal .ant-btn-primary:hover { border-color: #a06dff; background: #8957f1; }
+body.dark .ant-select-dropdown.dark { color: #e6ecf7; border: 1px solid rgba(145, 164, 201, .2); background: #172238; }
+body.dark .ant-select-dropdown.dark .ant-select-dropdown-menu-item { color: #dce4f2; }
+body.dark .ant-select-dropdown.dark .ant-select-dropdown-menu-item-active,
+body.dark .ant-select-dropdown.dark .ant-select-dropdown-menu-item:hover { background: #22304a; }
+
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-content {
+  color: #303a34;
+  border-color: #d9d7ca;
+  background: #fcfaf3;
+  box-shadow: 0 22px 64px rgba(49, 61, 48, .2);
+}
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-header,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-footer {
+  border-color: #dedbcf;
+  background: #f3f2e9;
+}
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-title,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label > label { color: #35483d; }
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-input,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-input-number,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-select-selection,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-picker {
+  color: #303a34;
+  border-color: #d1d3c7;
+  background: #fffdf7;
+}
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-input::placeholder { color: #7b857c; }
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-btn:not(.ant-btn-primary) {
+  color: #41584b;
+  border-color: #cdd3c7;
+  background: #fbfaf4;
+}
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-btn-primary,
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-switch-checked { color: #fff; border-color: #367c5c; background: #367c5c; }
+body.light .ant-modal-wrap.rafael-inbound-form-modal .ant-btn-primary:hover { border-color: #2d6f52; background: #2d6f52; }
+body.light .ant-select-dropdown.light { color: #303a34; border: 1px solid #d9d7ca; background: #fcfaf3; }
+body.light .ant-select-dropdown.light .ant-select-dropdown-menu-item { color: #35483d; }
+body.light .ant-select-dropdown.light .ant-select-dropdown-menu-item-active,
+body.light .ant-select-dropdown.light .ant-select-dropdown-menu-item:hover { background: #edf1e7; }
+
+@media (max-width: 767px) {
+  .ant-modal-wrap.rafael-inbound-form-modal { padding: 8px 0; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal {
+    top: 0 !important;
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    margin: 8px auto;
+  }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-content { max-height: calc(100dvh - 32px); }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-header { padding: 13px 15px; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-body { max-height: calc(100dvh - 142px); padding: 14px; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-modal-footer { padding: 10px 14px; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label,
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-control-wrapper {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    text-align: left;
+  }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label { padding-bottom: 4px; white-space: normal; }
+  .ant-modal-wrap.rafael-inbound-form-modal .ant-form-item-label > label { height: auto; white-space: normal; }
+}

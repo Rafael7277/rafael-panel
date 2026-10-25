@@ -1,0 +1,127 @@
+{{define "settings/xray/balancers"}}
+<template v-if="balancersData.length > 0">
+    <a-space direction="vertical" size="middle">
+        <a-button type="primary" icon="plus" @click="addBalancer()">
+            <span>{{ i18n "pages.xray.balancer.addBalancer"}}</span>
+        </a-button>
+        <a-table class="xray-balancers-table" :columns="balancerColumns" bordered :row-key="r => r.key" :data-source="balancersData"
+            :pagination="false" :indent-size="0" :locale='{ filterConfirm: `{{ i18n "confirm" }}`, filterReset: `{{ i18n "reset" }}` }'>
+            <template slot="action" slot-scope="text, balancer, index">
+                <span>[[ index+1 ]]</span>
+                <a-dropdown :trigger="['click']">
+                    <a-icon @click="e => e.preventDefault()" type="more"
+                        :style="{ fontSize: '16px', textDecoration: 'bold' }"></a-icon>
+                    <a-menu slot="overlay" :theme="themeSwitcher.currentTheme">
+                        <a-menu-item @click="editBalancer(index)">
+                            <a-icon type="edit"></a-icon>
+                            <span>{{ i18n "edit" }}</span>
+                        </a-menu-item>
+                        <a-menu-item @click="deleteBalancer(index)">
+                            <span :style="{ color: '#FF4D4F' }">
+                                <a-icon type="delete"></a-icon> 
+                                <span>{{ i18n "delete"}}</span>
+                            </span>
+                        </a-menu-item>
+                    </a-menu>
+                </a-dropdown>
+            </template>
+            <template slot="strategy" slot-scope="text, balancer, index">
+                <a-tag :style="{ margin: '0' }" v-if="balancer.strategy=='random'" color="purple">Random</a-tag>
+                <a-tag :style="{ margin: '0' }" v-if="balancer.strategy=='roundRobin'" color="green">Round Robin</a-tag>
+                <a-tag :style="{ margin: '0' }" v-if="balancer.strategy=='leastLoad'" color="green">Least Load</a-tag>
+                <a-tag :style="{ margin: '0' }" v-if="balancer.strategy=='leastPing'" color="green">Least Ping</a-tag>
+                <a-tag :style="{ margin: '0', cursor: 'pointer' }" v-if="balancer.strategy=='adaptiveSmart'" color="gold" @click="selectAdaptiveBalancer(balancer)">Adaptive Smart</a-tag>
+            </template>
+            <template slot="selector" slot-scope="text, balancer, index">
+                <a-tag class="info-large-tag" :style="{ margin: '1' }" v-for="sel in balancer.selector">[[ sel ]]</a-tag>
+            </template>
+        </a-table>
+        <a-radio-group v-if="observatoryEnable || burstObservatoryEnable" v-model="obsSettings" @change="changeObsCode"
+            button-style="solid" :size="isMobile ? 'small' : ''">
+            <a-radio-button value="observatory" v-if="observatoryEnable">Observatory</a-radio-button>
+            <a-radio-button value="burstObservatory" v-if="burstObservatoryEnable">Burst Observatory</a-radio-button>
+        </a-radio-group>
+        <a-card v-if="selectedAdaptiveBalancer && selectedAdaptiveBalancer.strategy === 'adaptiveSmart'" size="small" :style="{ marginTop: '16px' }">
+            <template #title>
+                <a-space direction="horizontal" :wrap="true">
+                    <span>Balancer Health Report</span>
+                    <a-tag color="gold">[[ selectedAdaptiveBalancer.tag ]]</a-tag>
+                    <a-tag color="blue">Runtime fallback: [[ selectedAdaptiveBalancer.adaptiveSmart?.fallbackStrategy || 'leastLoad' ]]</a-tag>
+                    <a-tag color="cyan">Active: [[ balancerHealthReport && balancerHealthReport.runtimeSelector && balancerHealthReport.runtimeSelector.length ? balancerHealthReport.runtimeSelector.join(', ') : 'not applied yet' ]]</a-tag>
+                    <a-tag v-if="balancerHealthReport && balancerHealthReport.pendingRuntimeSelector && balancerHealthReport.pendingRuntimeSelector.length" color="orange">Pending: [[ balancerHealthReport.pendingRuntimeSelector.join(', ') ]]</a-tag>
+                    <a-button size="small" icon="reload" :loading="balancerHealthLoading" @click="refreshAdaptiveHealth(true)">Refresh</a-button>
+                </a-space>
+            </template>
+            <a-alert
+                type="warning"
+                show-icon
+                :style="{ marginBottom: '12px' }"
+                message="Adaptive Smart uses cached health checks"
+                description="Runtime traffic still uses the selected native Xray strategy, but this health engine now trims that balancer's selector set to the members that remain eligible.">
+            </a-alert>
+            <template v-if="balancerHealthReport && balancerHealthReport.members && balancerHealthReport.members.length > 0">
+                <div :style="{ marginBottom: '12px', opacity: 0.8 }">
+                    Updated: [[ balancerHealthReport.updatedAt ? new Date(balancerHealthReport.updatedAt).toLocaleString() : 'No health data yet' ]]
+                    |
+                    Last Runtime Apply: [[ balancerHealthReport.runtimeLastAppliedAt ? new Date(balancerHealthReport.runtimeLastAppliedAt).toLocaleString() : 'not applied yet' ]]
+                    |
+                    Cooldown: [[ balancerHealthReport.runtimeCooldownRemainingSec > 0 ? balancerHealthReport.runtimeCooldownRemainingSec + ' sec remaining' : 'ready' ]]
+                </div>
+                <a-table class="xray-adaptive-health-table" :columns="adaptiveHealthColumns" :data-source="balancerHealthReport.members" :pagination="false" size="small" :row-key="row => row.tag">
+                    <template slot="memberStatus" slot-scope="text, record">
+                        <a-tag :color="adaptiveStatusColor(record.status)">[[ record.status ]]</a-tag>
+                    </template>
+                    <template slot="memberRuntime" slot-scope="text, record">
+                        <a-tag v-if="record.runtimeActive" color="green">active</a-tag>
+                        <a-tag v-else-if="record.runtimeEligible" color="blue">eligible</a-tag>
+                        <a-tag v-else color="red">out</a-tag>
+                    </template>
+                    <template slot="memberScore" slot-scope="text, record">
+                        <a-progress :percent="record.score" size="small" :show-info="false" :stroke-color="adaptiveScoreColor(record.score)"></a-progress>
+                        <div>[[ record.score ]] / 100</div>
+                    </template>
+                    <template slot="memberWeight" slot-scope="text, record">
+                        [[ record.weightPercent.toFixed ? record.weightPercent.toFixed(1) : record.weightPercent ]]%
+                    </template>
+                    <template slot="memberLatency" slot-scope="text, record">
+                        [[ record.latencyMs > 0 ? record.latencyMs + ' ms' : '-' ]]
+                    </template>
+                    <template slot="memberSuccessRate" slot-scope="text, record">
+                        [[ Math.round((record.successRate || 0) * 100) ]]%
+                    </template>
+                    <template slot="memberLastChecked" slot-scope="text, record">
+                        [[ record.lastCheckedAt ? new Date(record.lastCheckedAt).toLocaleString() : '-' ]]
+                    </template>
+                    <template slot="memberQuarantine" slot-scope="text, record">
+                        [[ record.quarantineRemainingSec > 0 ? record.quarantineRemainingSec + ' sec' : '-' ]]
+                    </template>
+                    <template slot="memberLastError" slot-scope="text, record">
+                        [[ record.lastError || '-' ]]
+                    </template>
+                    <template slot="memberReason" slot-scope="text, record">
+                        [[ record.excludedReason || '-' ]]
+                    </template>
+                </a-table>
+                <a-divider orientation="left">Recent Adaptive Events</a-divider>
+                <a-table class="xray-adaptive-events-table" :columns="adaptiveEventColumns" :data-source="balancerHealthReport.events || []" :pagination="false" size="small" :row-key="row => `${row.at}-${row.type}-${row.memberTag || 'all'}`">
+                    <template slot="adaptiveEventTime" slot-scope="text, record">
+                        [[ record.at ? new Date(record.at).toLocaleString() : '-' ]]
+                    </template>
+                    <template slot="adaptiveEventLevel" slot-scope="text, record">
+                        <a-tag :color="adaptiveEventColor(record.level)">[[ record.level ]]</a-tag>
+                    </template>
+                </a-table>
+            </template>
+            <a-empty v-else description="No health data yet"></a-empty>
+        </a-card>
+        <textarea :style="{ position: 'absolute', left: '-800px' }" id="obsSetting"></textarea>
+    </a-space>
+</template>
+<template v-else>
+    <a-empty description='{{ i18n "emptyBalancersDesc" }}' :style="{ margin: '10px' }">
+        <a-button type="primary" icon="plus" @click="addBalancer()" :style="{ marginTop: '10px' }">
+            <span>{{ i18n "pages.xray.balancer.addBalancer"}}</span>
+        </a-button>
+    </a-empty>
+</template>
+{{end}}

@@ -1,0 +1,53 @@
+# Ignore editor and IDE settings
+.idea/
+.vscode/
+.claude/
+.cache/
+.sync*
+
+# Ignore log files
+*.log
+
+# Ignore temporary files
+tmp/
+*.tar.gz
+
+# Ignore build and distribution directories
+backup/
+bin/
+dist/
+release/
+node_modules/
+build-v*/
+/build/
+/log/
+/forks/
+/windows_files/
+/3x-ui.exe
+/BUILD_V[0-5][0-8]_CHECKLIST.md
+/build-release-v58.ps1
+/build-release.ps1
+/build-release-v2.ps1
+/build-release-v3.ps1
+/RELEASE_NOTES_v17.md
+
+# Ignore compiled binaries
+main
+
+# Ignore script and executable files
+/release.sh
+/x-ui
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Go build files
+*.exe
+x-ui.db
+
+# Ignore Docker specific files
+docker-compose.override.yml
+
+# Ignore .env (Environment Variables) file
+.env

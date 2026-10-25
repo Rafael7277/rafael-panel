@@ -1,0 +1,8 @@
+upstream_module=github.com/xtls/xray-core
+upstream_version=v1.260327.0
+fork_branch=rafael
+fork_base_commit=780167948dbbac8cd9fbeacf0b5c1a0c4243c525
+local_changes=app/dispatcher/default.go,app/iplimit/hook.go,app/iplimit/tracker.go
+source_sha256=23df7af0aec7f7523fbdf393357e78a93943fb12c481c2feb0056744c11e6441
+source_tree=third_party/xray-core
+ip_limit_policy=XRAY_IPLIMIT_FILE strict JSON snapshot

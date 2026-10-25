@@ -1,0 +1,414 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' resellers-page'">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-panel-topbar title="Resellers" subtitle="Manage reseller access, limits, and portal links"></a-panel-topbar>
+    <a-layout-content>
+      <div class="reseller-summary-grid">
+        <a-card class="reseller-summary-card" :bordered="false"><a-statistic title="Total resellers" :value="rows.length"><template #prefix><a-icon type="team" /></template></a-statistic></a-card>
+        <a-card class="reseller-summary-card" :bordered="false"><a-statistic title="Enabled" :value="enabledResellers"><template #prefix><a-icon type="check-circle" /></template></a-statistic></a-card>
+        <a-card class="reseller-summary-card" :bordered="false"><a-statistic title="Assigned clients" :value="assignedUsers"><template #prefix><a-icon type="user" /></template></a-statistic></a-card>
+        <a-card class="reseller-summary-card" :bordered="false"><a-statistic title="Traffic used" :value="SizeFormatter.sizeFormat(trafficUsed)"><template #prefix><a-icon type="cloud-download" /></template></a-statistic></a-card>
+      </div>
+      <a-card class="reseller-management-card" hoverable>
+        <template #title>
+          <div class="reseller-management-heading"><a-icon type="team"></a-icon><span><strong>Reseller Management</strong><small>Create and manage reseller accounts, permissions, and resource limits.</small></span></div>
+        </template>
+        <template #extra>
+          <div class="reseller-management-actions">
+            <a-input-search v-model.trim="searchKey" placeholder="Search by username or path..." allow-clear></a-input-search>
+            <a-button type="primary" icon="plus" @click="openCreate">Create Reseller</a-button>
+            <a-button class="reseller-refresh-button" icon="reload" :loading="loading" @click="loadRows" aria-label="Refresh resellers"></a-button>
+          </div>
+        </template>
+        <a-table v-if="!isMobile" class="reseller-table" :columns="columns" :data-source="filteredRows" :row-key="row => row.id" :pagination="filteredRows.length > 10 ? { pageSize: 10 } : false">
+          <template slot="status" slot-scope="text, record">
+            <a-tag class="reseller-status-tag" :color="record.enabled ? 'green' : 'red'"><i></i>[[ record.enabled ? 'Enabled' : 'Disabled' ]]</a-tag>
+          </template>
+          <template slot="quota" slot-scope="text, record">
+            <div class="reseller-quota-cell"><strong>[[ record.clientCount ]] / [[ record.maxUsers > 0 ? record.maxUsers : '∞' ]] <small>users</small></strong><span>[[ SizeFormatter.sizeFormat(record.usedTraffic || 0) ]] / [[ record.maxTraffic > 0 ? SizeFormatter.sizeFormat(record.maxTraffic) : '∞' ]]</span><small>[[ record.remainingUsers >= 0 ? `${record.remainingUsers} users remaining` : 'Unlimited users' ]] · [[ formatRemainingTraffic(record.remainingTraffic) ]] traffic remaining</small></div>
+          </template>
+          <template slot="allowedInbounds" slot-scope="text, record">
+            <div v-if="!Array.isArray(record.allowedInboundIds) || !record.allowedInboundIds.length" class="reseller-inbound-tags"><a-tag color="purple">All</a-tag></div>
+            <div v-else class="reseller-inbound-tags"><a-tag v-for="inboundId in record.allowedInboundIds" :key="inboundId" color="default">#[[ inboundId ]]</a-tag></div>
+          </template>
+          <template slot="permissions" slot-scope="text, record">
+            <a-space wrap>
+              <a-tag :class="permissionClass(record, 'overview')">Overview</a-tag>
+              <a-tag :class="permissionClass(record, 'inbounds')">Inbounds</a-tag>
+              <a-tag :class="permissionClass(record, 'multiLinks')">Multi link</a-tag>
+            </a-space>
+          </template>
+          <template slot="portal" slot-scope="text, record">
+            <span class="reseller-path-text" :title="portalUrl(record.username, record.portalPath)">[[ portalAddressPath(record) ]]</span>
+          </template>
+          <template slot="action" slot-scope="text, record">
+            <div class="reseller-row-actions">
+              <a-button class="reseller-icon-action" size="small" icon="edit" title="Edit reseller" aria-label="Edit reseller" @click="openEdit(record)"></a-button>
+              <a-dropdown :trigger="['click']">
+                <a-button class="reseller-icon-action" size="small" title="More actions" aria-label="More reseller actions"><a-icon type="more"></a-icon></a-button>
+                <a-menu slot="overlay" :theme="themeSwitcher.currentTheme">
+                  <a-menu-item @click="toggleEnabled(record, !record.enabled)"><a-icon :type="record.enabled ? 'stop' : 'check-circle'"></a-icon>[[ record.enabled ? 'Disable reseller' : 'Enable reseller' ]]</a-menu-item>
+                  <a-menu-item @click="copyPortal(record)"><a-icon type="copy"></a-icon>Copy portal link</a-menu-item>
+                  <a-menu-item @click="remove(record)"><a-icon type="delete"></a-icon>Delete reseller</a-menu-item>
+                </a-menu>
+              </a-dropdown>
+            </div>
+          </template>
+        </a-table>
+        <div v-else class="reseller-mobile-list">
+          <a-card v-for="record in filteredRows" :key="record.id" class="reseller-mobile-card" :bordered="false">
+            <div class="reseller-mobile-head"><div><strong>[[ record.username ]]</strong><a-tag :color="record.enabled ? 'green' : 'red'">[[ record.enabled ? 'Enabled' : 'Disabled' ]]</a-tag></div><a-dropdown :trigger="['click']"><a-icon type="more" class="reseller-mobile-more"></a-icon><a-menu slot="overlay" :theme="themeSwitcher.currentTheme"><a-menu-item @click="openEdit(record)"><a-icon type="edit"></a-icon>Edit reseller</a-menu-item><a-menu-item @click="copyPortal(record)"><a-icon type="copy"></a-icon>Copy portal link</a-menu-item><a-menu-item @click="remove(record)"><a-icon type="delete"></a-icon>Delete reseller</a-menu-item></a-menu></a-dropdown></div>
+            <div class="reseller-mobile-path"><a-icon type="link"></a-icon> [[ portalAddressPath(record) ]]</div>
+            <div class="reseller-mobile-stats"><span>Clients <b>[[ record.clientCount ]] / [[ record.maxUsers > 0 ? record.maxUsers : '∞' ]]</b></span><span>Traffic <b>[[ SizeFormatter.sizeFormat(record.usedTraffic || 0) ]] / [[ record.maxTraffic > 0 ? SizeFormatter.sizeFormat(record.maxTraffic) : '∞' ]]</b></span></div>
+            <div class="reseller-mobile-permissions"><a-tag v-if="record.permissions && record.permissions.overview" color="blue">Overview</a-tag><a-tag v-if="record.permissions && record.permissions.inbounds" color="geekblue">Inbounds</a-tag><a-tag v-if="record.permissions && record.permissions.multiLinks" color="purple">Multi link</a-tag></div>
+            <div class="reseller-mobile-actions"><a-switch :checked="!!record.enabled" checked-children="ON" un-checked-children="OFF" @change="toggleEnabled(record, $event)"></a-switch><a-button size="small" icon="edit" @click="openEdit(record)">Edit</a-button><a-button size="small" type="danger" icon="delete" @click="remove(record)">Delete</a-button></div>
+          </a-card>
+          <a-empty v-if="!filteredRows.length" description="No resellers found"></a-empty>
+        </div>
+      </a-card>
+
+      <a-drawer :visible="modalVisible" :width="isMobile ? '100%' : 440" :title="editing.id ? 'Edit Reseller' : 'Create Reseller'" placement="right" @close="closeModal" :wrap-class-name="themeSwitcher.currentTheme + ' reseller-editor-drawer'">
+        <p class="reseller-drawer-description">Manage account access, portal path, quotas, and permissions.</p>
+        <a-form-model layout="vertical" :model="editing">
+          <a-form-model-item label="Username">
+            <a-input v-model.trim="editing.username"></a-input>
+          </a-form-model-item>
+          <a-form-model-item label="Status">
+            <div class="reseller-status-control"><a-switch v-model="editing.enabled"></a-switch><strong>[[ editing.enabled ? 'Enabled' : 'Disabled' ]]</strong><small>Disabled resellers cannot log in to their panel.</small></div>
+          </a-form-model-item>
+          <a-form-model-item label="Optional Web Path">
+            <a-input v-model.trim="editing.portalPath" autocomplete="off" placeholder="Leave blank to use the username path"></a-input>
+            <div class="reseller-url-help">Leave blank for /reseller/{username}/. Add one private path segment to require it.</div>
+            <div class="reseller-url-preview"><a-icon type="link"></a-icon><span>[[ portalUrl(editing.username, editing.portalPath) ]]</span><a-button type="link" icon="copy" @click="copyPortal(editing)"></a-button></div>
+          </a-form-model-item>
+          <a-form-model-item :label="editing.id ? 'Password (leave blank to keep current)' : 'Password'">
+            <a-input-password v-model.trim="editing.password"></a-input-password>
+          </a-form-model-item>
+          <div class="reseller-quota-grid">
+            <a-form-model-item label="User Quota"><a-input-number v-model="editing.maxUsers" :min="0" style="width:100%;"></a-input-number><small>0 means unlimited users</small></a-form-model-item>
+            <a-form-model-item label="Traffic Quota (GB)"><a-input-number v-model="editing.maxTrafficGB" :min="0" :step="0.1" :precision="1" style="width:100%;"></a-input-number><small>0 means unlimited traffic</small></a-form-model-item>
+          </div>
+          <a-form-model-item label="Allowed Inbounds">
+            <a-select
+              v-model="editing.allowedInboundIds"
+              mode="multiple"
+              :options="inboundOptions"
+              option-filter-prop="label"
+              placeholder="Leave empty for all inbounds"
+              style="width:100%;">
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item label="Permissions">
+            <div class="reseller-permission-list">
+              <label><a-checkbox v-model="editing.permissions.overview"></a-checkbox><span><strong>Overview</strong><small>Allow access to dashboard and statistics.</small></span></label>
+              <label><a-checkbox v-model="editing.permissions.inbounds"></a-checkbox><span><strong>Inbounds</strong><small>Allow managing inbounds and client links.</small></span></label>
+              <label><a-checkbox v-model="editing.permissions.multiLinks"></a-checkbox><span><strong>Multi link</strong><small>Allow managing multi link configuration.</small></span></label>
+            </div>
+            <a-alert
+              v-if="editing.enabled && !hasAnyPermission(editing.permissions)"
+              type="warning"
+              show-icon
+              message="An enabled reseller needs at least one panel permission."
+              style="margin-top: 8px">
+            </a-alert>
+          </a-form-model-item>
+        </a-form-model>
+        <div class="reseller-drawer-footer"><a-button @click="closeModal">Cancel</a-button><a-button type="primary" :loading="saving" @click="save">[[ editing.id ? 'Save changes' : 'Create reseller' ]]</a-button></div>
+      </a-drawer>
+
+      <a-modal
+        title="Disable reseller"
+        :visible="disableModalVisible"
+        :confirm-loading="saving"
+        @ok="confirmDisable"
+        @cancel="closeDisableModal">
+        <a-alert
+          type="info"
+          show-icon
+          message="Choose how this reseller should be disabled."
+          description="If you disable clients too, only the clients that were enabled at this moment will be restored automatically when you enable the reseller again."
+          style="margin-bottom: 16px">
+        </a-alert>
+        <a-radio-group v-model="disableAction" style="display:flex; flex-direction:column; gap:12px;">
+          <a-radio value="none">Disable reseller only</a-radio>
+          <a-radio value="disable_clients">Disable reseller and disable all of its clients and multi links</a-radio>
+        </a-radio-group>
+      </a-modal>
+
+      <a-modal
+        title="Delete reseller"
+        :visible="deleteModalVisible"
+        :confirm-loading="saving"
+        @ok="confirmDelete"
+        @cancel="closeDeleteModal">
+        <a-alert
+          type="warning"
+          show-icon
+          message="Choose what to do with this reseller's clients and multi links."
+          description="Deleting clients removes them completely. Disabling keeps them in the inbounds but turns them off before the reseller account is deleted."
+          style="margin-bottom: 16px">
+        </a-alert>
+        <a-radio-group v-model="deleteAction" style="display:flex; flex-direction:column; gap:12px;">
+          <a-radio value="delete_clients">Delete reseller and delete all of its clients and multi links</a-radio>
+          <a-radio value="disable_clients">Delete reseller and disable all of its clients and multi links</a-radio>
+          <a-radio value="none">Delete reseller without any extra action</a-radio>
+        </a-radio-group>
+      </a-modal>
+    </a-layout-content>
+  </a-layout>
+</a-layout>
+
+{{template "page/body_scripts" .}}
+{{template "component/aSidebar" .}}
+{{template "component/aThemeSwitch" .}}
+<script>
+  new Vue({
+    delimiters: ['[[', ']]'],
+    el: '#app',
+    data: {
+      themeSwitcher,
+      SizeFormatter,
+      loading: false,
+      saving: false,
+      modalVisible: false,
+      disableModalVisible: false,
+      deleteModalVisible: false,
+      disableAction: 'none',
+      deleteAction: 'none',
+      pendingRow: null,
+      searchKey: '',
+      rows: [],
+      inboundOptions: [],
+      columns: [
+        { title: 'Username', dataIndex: 'username', width: 135 },
+        { title: 'Status', key: 'status', width: 110, scopedSlots: { customRender: 'status' } },
+        { title: 'Allowed Inbounds', key: 'allowedInbounds', width: 160, scopedSlots: { customRender: 'allowedInbounds' } },
+        { title: 'User / Traffic Quota', key: 'quota', width: 190, scopedSlots: { customRender: 'quota' } },
+        { title: 'Permissions', key: 'permissions', width: 190, scopedSlots: { customRender: 'permissions' } },
+        { title: 'Web Path', key: 'portal', width: 165, scopedSlots: { customRender: 'portal' } },
+        { title: 'Actions', key: 'action', width: 82, scopedSlots: { customRender: 'action' } },
+      ],
+      editing: {
+        id: 0,
+        username: '',
+        password: '',
+        portalPath: '',
+        enabled: true,
+        maxUsers: 0,
+        maxTrafficGB: 0,
+        allowedInboundIds: [],
+        permissions: { overview: true, inbounds: true, multiLinks: true },
+      }
+    },
+    mixins: [MediaQueryMixin],
+    computed: {
+      filteredRows() {
+        const query = (this.searchKey || '').toLowerCase();
+        if (!query) return this.rows;
+        return this.rows.filter(row => `${row.username || ''} ${row.portalPath || ''}`.toLowerCase().includes(query));
+      },
+      enabledResellers() { return this.rows.filter(row => !!row.enabled).length; },
+      assignedUsers() { return this.rows.reduce((sum, row) => sum + Number(row.clientCount || 0), 0); },
+      trafficUsed() { return this.rows.reduce((sum, row) => sum + Number(row.usedTraffic || 0), 0); },
+    },
+    methods: {
+      permissionClass(record, key) {
+        return `reseller-permission-tag ${record.permissions && record.permissions[key] ? 'is-enabled' : 'is-disabled'}`;
+      },
+      portalUrl(username, webPath) {
+        const safeUsername = encodeURIComponent((username || 'username').trim());
+        const safePath = (webPath || '').trim();
+        const suffix = safePath ? `${encodeURIComponent(safePath)}/` : '';
+        return `${window.location.origin}/reseller/${safeUsername}/${suffix}`;
+      },
+      portalAddressPath(record) {
+        const username = encodeURIComponent((record?.username || '').trim());
+        const webPath = (record?.portalPath || '').trim();
+        return `/reseller/${username}/${webPath ? `${encodeURIComponent(webPath)}/` : ''}`;
+      },
+      formatRemainingTraffic(value) {
+        if (value < 0) {
+          return 'Unlimited';
+        }
+        return `${(value / SizeFormatter.ONE_GB).toFixed(1)} GB`;
+      },
+      emptyForm() {
+        return {
+          id: 0,
+          username: '',
+          password: '',
+          portalPath: '',
+          enabled: true,
+          maxUsers: 0,
+          maxTrafficGB: 0,
+          allowedInboundIds: [],
+          permissions: { overview: true, inbounds: true, multiLinks: true },
+        };
+      },
+      hasAnyPermission(permissions) {
+        return !!(permissions && (permissions.overview || permissions.inbounds || permissions.multiLinks));
+      },
+      serializePermissions(permissions) {
+        return JSON.stringify({
+          overview: !!(permissions && permissions.overview),
+          inbounds: !!(permissions && permissions.inbounds),
+          multiLinks: !!(permissions && permissions.multiLinks),
+        });
+      },
+      async loadInboundOptions() {
+        const msg = await HttpUtil.get(`${panelApiPath}/resellers/inbound-options`);
+        if (!msg.success) {
+          return;
+        }
+        this.inboundOptions = (Array.isArray(msg.obj) ? msg.obj : []).map(row => ({
+          value: row.id,
+          label: row.label || `#${row.id}`,
+          disabled: row.enabled === false,
+        }));
+      },
+      async loadRows() {
+        this.loading = true;
+        const msg = await HttpUtil.get(`${panelApiPath}/resellers/list`);
+        this.loading = false;
+        if (msg.success) {
+          this.rows = Array.isArray(msg.obj) ? msg.obj : [];
+        }
+      },
+      openCreate() {
+        this.editing = this.emptyForm();
+        this.modalVisible = true;
+      },
+      openEdit(row) {
+        this.editing = {
+          id: row.id,
+          username: row.username,
+          password: '',
+          portalPath: row.portalPath || '',
+          enabled: !!row.enabled,
+          maxUsers: row.maxUsers || 0,
+          maxTrafficGB: row.maxTraffic > 0 ? Number((row.maxTraffic / SizeFormatter.ONE_GB).toFixed(1)) : 0,
+          allowedInboundIds: Array.isArray(row.allowedInboundIds) ? row.allowedInboundIds.slice() : [],
+          permissions: Object.assign({ overview: true, inbounds: true, multiLinks: true }, row.permissions || {}),
+        };
+        this.modalVisible = true;
+      },
+      closeModal() {
+        this.modalVisible = false;
+      },
+      closeDisableModal() {
+        this.disableModalVisible = false;
+        this.pendingRow = null;
+        this.disableAction = 'none';
+      },
+      closeDeleteModal() {
+        this.deleteModalVisible = false;
+        this.pendingRow = null;
+        this.deleteAction = 'none';
+      },
+      async save() {
+        if (this.saving) {
+          return;
+        }
+        if (this.editing.enabled && !this.hasAnyPermission(this.editing.permissions)) {
+          this.$message.warning('Enable Overview, Inbounds, or Multi link before saving an enabled reseller.');
+          return;
+        }
+        this.saving = true;
+        const payload = {
+          username: this.editing.username,
+          password: this.editing.password,
+          portalPath: this.editing.portalPath,
+          enabled: this.editing.enabled,
+          maxUsers: this.editing.maxUsers || 0,
+          maxTraffic: Math.max(0, Math.round(Number(this.editing.maxTrafficGB || 0) * SizeFormatter.ONE_GB)),
+          allowedInboundIds: Array.isArray(this.editing.allowedInboundIds) && this.editing.allowedInboundIds.length ? this.editing.allowedInboundIds : null,
+          permissions: this.serializePermissions(this.editing.permissions),
+        };
+        const url = this.editing.id ? `${panelApiPath}/resellers/update/${this.editing.id}` : `${panelApiPath}/resellers/add`;
+        const msg = await HttpUtil.post(url, payload);
+        this.saving = false;
+        if (msg.success) {
+          this.modalVisible = false;
+          await this.loadRows();
+        }
+      },
+      remove(row) {
+        this.pendingRow = row;
+        this.deleteAction = 'none';
+        this.deleteModalVisible = true;
+      },
+      async confirmDelete() {
+        if (!this.pendingRow) {
+          return;
+        }
+        this.saving = true;
+        const msg = await HttpUtil.post(`${panelApiPath}/resellers/del/${this.pendingRow.id}`, {
+          clientAction: this.deleteAction,
+        });
+        this.saving = false;
+        if (msg.success) {
+          this.closeDeleteModal();
+          await this.loadRows();
+        }
+      },
+      async toggleEnabled(row, checked) {
+        if (!checked) {
+          this.pendingRow = row;
+          this.disableAction = 'none';
+          this.disableModalVisible = true;
+          return;
+        }
+        const payload = {
+          username: row.username,
+          password: '',
+          enabled: !!checked,
+          maxUsers: row.maxUsers || 0,
+          maxTraffic: row.maxTraffic || 0,
+          allowedInboundIds: Array.isArray(row.allowedInboundIds) && row.allowedInboundIds.length ? row.allowedInboundIds : null,
+          permissions: this.serializePermissions(Object.assign({ overview: true, inbounds: true, multiLinks: true }, row.permissions || {})),
+        };
+        const msg = await HttpUtil.post(`${panelApiPath}/resellers/update/${row.id}`, payload);
+        if (msg.success) {
+          row.enabled = !!checked;
+          await this.loadRows();
+        }
+      },
+      async confirmDisable() {
+        if (!this.pendingRow) {
+          return;
+        }
+        this.saving = true;
+        const row = this.pendingRow;
+        const payload = {
+          username: row.username,
+          password: '',
+          enabled: false,
+          maxUsers: row.maxUsers || 0,
+          maxTraffic: row.maxTraffic || 0,
+          allowedInboundIds: Array.isArray(row.allowedInboundIds) && row.allowedInboundIds.length ? row.allowedInboundIds : null,
+          permissions: this.serializePermissions(Object.assign({ overview: true, inbounds: true, multiLinks: true }, row.permissions || {})),
+          clientAction: this.disableAction,
+        };
+        const msg = await HttpUtil.post(`${panelApiPath}/resellers/update/${row.id}`, payload);
+        this.saving = false;
+        if (msg.success) {
+          this.closeDisableModal();
+          await this.loadRows();
+        }
+      },
+      copyPortal(record) {
+        const url = this.portalUrl(record?.username, record?.portalPath);
+        ClipboardManager.copyText(url).then(() => this.$message.success('Copied'));
+      },
+    },
+    async mounted() {
+      await this.loadInboundOptions();
+      await this.loadRows();
+    },
+  });
+</script>
+{{ template "page/body_end" .}}

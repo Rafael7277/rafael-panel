@@ -1,0 +1,111 @@
+{{ define "page/head_start" }}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="renderer" content="webkit">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/ant-design-vue/antd.min.css">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/custom.min.css?{{ .cur_ver }}">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v50.css?{{ .cur_ver }}-v50">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v51.css?{{ .cur_ver }}-v51">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v52.css?{{ .cur_ver }}-v52">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v53.css?{{ .cur_ver }}-v53">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v54.css?{{ .cur_ver }}-v54">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v55.css?{{ .cur_ver }}-v55">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v56.css?{{ .cur_ver }}-v56">
+  <link rel="stylesheet" href="{{ .asset_path }}assets/css/rafael-v57.css?{{ .cur_ver }}-v57">
+  <style>
+    [v-cloak] {
+      display: none;
+    }
+    /* vazirmatn-regular - arabic_latin_latin-ext */
+    @font-face {
+      font-display: swap;
+      font-family: 'Vazirmatn';
+      font-style: normal;
+      font-weight: 400;
+      src: url('{{ .asset_path }}assets/Vazirmatn-UI-NL-Regular.woff2') format('woff2');
+      unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE80-FEFC, U+0030-0039;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Vazirmatn', 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    
+    /* mobile touch scrolling for tabs */
+    @media (max-width: 576px) {
+      .ant-tabs-nav-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        overscroll-behavior-x: contain;
+        white-space: nowrap;
+        max-width: 100%;
+        padding: 0 !important; /* Remove padding for arrows */
+      }
+      .ant-tabs-nav-wrap {
+        overflow: visible !important;
+        padding: 0 !important;
+      }
+      .ant-tabs-nav-scroll {
+        overflow: visible !important;
+        box-shadow: none !important;
+      }
+      .ant-tabs-nav {
+         display: flex !important;
+         transform: none !important; /* Disable JS transform */
+         width: auto !important;
+         margin: 0 !important;
+      }
+      .ant-tabs-tab-prev,
+      .ant-tabs-tab-next {
+        display: none !important; /* Hide arrows */
+      }
+      .ant-tabs-nav-container::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  </style>
+  <title>{{ .host }} – {{ i18n .title}}</title>
+{{ end }}
+
+{{ define "page/head_end" }}
+</head>
+{{ end }}
+
+{{ define "page/body_start" }}
+<body>
+  <div id="message"></div>
+{{ end }}
+
+{{ define "page/body_scripts" }}
+<script src="{{ .asset_path }}assets/vue/vue.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/moment/moment.min.js"></script>
+<script src="{{ .asset_path }}assets/ant-design-vue/antd.min.js"></script>
+<script src="{{ .asset_path }}assets/axios/axios.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/qs/qs.min.js"></script>
+<script src="{{ .asset_path }}assets/js/axios-init.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/js/util/index.js?{{ .cur_ver }}"></script>
+<script>
+  const basePath = '{{ .base_path }}';
+  const portalRootPath = '{{ .portal_root }}';
+  const panelPath = '{{ .panel_path }}';
+  const panelApiPath = '{{ .api_path }}';
+  const logoutPath = '{{ .logout_path }}';
+  const portalUsername = {{ .portal_username }};
+  const portalIsReseller = {{ if .portal_is_reseller }}true{{ else }}false{{ end }};
+  const loginIsAdmin = {{ if .login_is_admin }}true{{ else }}false{{ end }};
+  const loginUserId = {{ if .login_user }}{{ .login_user.Id }}{{ else }}0{{ end }};
+  // API and panel paths already include the configured main or reseller
+  // web path. Keep only the origin in Axios, otherwise a non-root web path
+  // is prepended a second time and every request returns 404.
+  axios.defaults.baseURL = window.location.origin;
+</script>
+<script src="{{ .asset_path }}assets/js/websocket.js?{{ .cur_ver }}"></script>
+{{ end }}
+  
+{{ define "page/body_end" }}
+</body>
+</html>
+{{ end }}

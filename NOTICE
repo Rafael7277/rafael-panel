@@ -1,0 +1,26 @@
+Rafael Panel source and release notice
+
+Rafael Panel is derived from MHSanaei/3x-ui:
+https://github.com/MHSanaei/3x-ui
+
+The upstream project and this derivative are distributed under GNU GPL
+version 3.0. The full license text is in LICENSE. Changes specific to Rafael
+Panel include reseller administration and portal routing, panel appearance,
+installation and release packaging, and other modifications identified in
+the repository history.
+
+Third-party release components:
+
+- Xray-core is built from the vendored Rafael fork source in
+  `third_party/xray-core`, based on `github.com/xtls/xray-core v1.260327.0`.
+  The fork adds the in-process IP-limit gate used by Rafael Panel. Its source
+  and upstream license are included in the repository and the matching source
+  archive published with each Rafael release. The standalone fork binary is
+  released with the panel and includes the same source fingerprint.
+  Upstream: https://github.com/XTLS/Xray-core
+- GeoIP and GeoSite data: https://github.com/Loyalsoldier/v2ray-rules-dat
+- Automatic TLS issuance, when selected by the operator: acme.sh from
+  https://github.com/acmesh-official/acme.sh and Let's Encrypt
+
+Review the license and notices supplied by each component before redistributing
+modified or combined releases. This notice does not replace those licenses.

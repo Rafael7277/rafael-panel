@@ -1,0 +1,13 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+  <section style="max-width:560px;width:100%;padding:32px;border-radius:20px;background:#fff;color:#222;box-shadow:0 8px 32px rgba(0,0,0,.08);text-align:center;">
+    <h1 style="font-size:24px;margin-bottom:16px;">{{ i18n "pages.resellerAccess.title" }}</h1>
+    <p style="line-height:1.8;margin-bottom:24px;">{{ i18n "pages.resellerAccess.message" }}</p>
+    <a class="ant-btn ant-btn-primary" href="{{ .logout_path }}">{{ i18n "pages.resellerAccess.logout" }}</a>
+  </section>
+</main>
+
+{{ template "page/body_end" .}}

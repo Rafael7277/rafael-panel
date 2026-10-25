@@ -1,0 +1,173 @@
+/* Rafael v52: remove Ant Design grid artifacts and restore readable, compact layouts. */
+
+/* Ant Row adds clearfix pseudo-elements. When a row is made a CSS grid, those
+   pseudo-elements become anonymous grid items and shift every real column. */
+#app:not(.login-app) .ant-row.overview-grid::before,
+#app:not(.login-app) .ant-row.overview-grid::after,
+#app:not(.login-app) .ant-row.reseller-summary-grid::before,
+#app:not(.login-app) .ant-row.reseller-summary-grid::after,
+#app:not(.login-app) .ant-row.multilink-stats-grid::before,
+#app:not(.login-app) .ant-row.multilink-stats-grid::after,
+#app:not(.login-app) .ant-row.nodes-stats-grid::before,
+#app:not(.login-app) .ant-row.nodes-stats-grid::after,
+#app:not(.login-app) .ant-row.inbounds-layout::before,
+#app:not(.login-app) .ant-row.inbounds-layout::after,
+#app:not(.login-app) .ant-row.xray-page-layout::before,
+#app:not(.login-app) .ant-row.xray-page-layout::after {
+  content: none !important;
+  display: none !important;
+}
+
+#app:not(.login-app) .ant-row.overview-grid,
+#app:not(.login-app) .ant-row.reseller-summary-grid,
+#app:not(.login-app) .ant-row.multilink-stats-grid,
+#app:not(.login-app) .ant-row.nodes-stats-grid,
+#app:not(.login-app) .ant-row.inbounds-layout,
+#app:not(.login-app) .ant-row.xray-page-layout {
+  width: 100%;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+#app.dark:not(.login-app) .ant-row.overview-grid > .ant-col,
+#app.dark:not(.login-app) .ant-row.reseller-summary-grid > .ant-col,
+#app.dark:not(.login-app) .ant-row.multilink-stats-grid > .ant-col,
+#app.dark:not(.login-app) .ant-row.nodes-stats-grid > .ant-col,
+#app.dark:not(.login-app) .ant-row.inbounds-layout > .ant-col,
+#app.dark:not(.login-app) .ant-row.xray-page-layout > .ant-col {
+  flex: initial !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+}
+
+/* Overview: all four gauges share one compact row and remain centered. */
+.index-page .ant-row.overview-grid { display: grid !important; align-items: stretch; }
+.overview-resource-grid { width: 100%; align-items: stretch; }
+.overview-resource-grid .overview-meter-card,
+.overview-resource-grid .overview-meter-card > .ant-card-body {
+  height: auto !important;
+  min-height: 126px;
+  box-sizing: border-box;
+}
+.overview-resource-grid .overview-meter-card > .ant-card-body {
+  display: grid !important;
+  grid-template-columns: 46px minmax(0, 1fr) 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 14px;
+}
+.overview-meter-icon { grid-column: 1; grid-row: 1; }
+.overview-meter-copy { grid-column: 2; grid-row: 1; min-width: 0; }
+.overview-meter-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overview-meter-copy strong { font-size: clamp(18px, 1.4vw, 23px); white-space: nowrap; }
+.overview-meter-copy small { line-height: 1.4; overflow-wrap: normal; }
+.overview-meter-ring { grid-column: 3; grid-row: 1; align-self: center; justify-self: end; }
+.overview-resource-grid .overview-meter-card .ant-card-body::before,
+.overview-resource-grid .overview-meter-card .ant-card-body::after { display: none; }
+.overview-service-card .ant-card-body,
+.overview-manage-col .ant-card-body { min-height: 128px; }
+.overview-small-card .ant-card-body { min-height: 78px; }
+.overview-traffic-plot { height: clamp(180px, 16vw, 228px); }
+
+/* Summary tiles: no negative-gutter drift and no single tile falling to row two. */
+.resellers-page .ant-row.reseller-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.reseller-summary-grid .ant-col { padding: 0 !important; }
+.reseller-summary-card,
+.reseller-summary-grid .reseller-summary-card { height: auto; min-height: 96px; }
+.reseller-summary-card .ant-card-body { min-height: 96px; padding: 14px 16px; }
+.reseller-summary-card .ant-statistic-title { margin-bottom: 6px; }
+.reseller-summary-card .ant-statistic-content { font-size: clamp(20px, 1.55vw, 25px); }
+.multilink-stats-grid > .ant-col,
+.nodes-page .nodes-stats-grid > .ant-col { min-width: 0; }
+
+/* Reseller table: wrap controls and clip long portal paths inside their columns. */
+.reseller-table .ant-table-content,
+.reseller-table .ant-table-body { max-width: 100%; overflow-x: auto !important; }
+.reseller-table .ant-table table { table-layout: fixed !important; }
+.reseller-table .ant-table-tbody > tr > td { min-width: 0; overflow: hidden; vertical-align: middle; }
+.reseller-table .ant-space { display: inline-flex; max-width: 100%; flex-wrap: wrap !important; gap: 6px; }
+.reseller-table .ant-space-item { min-width: 0; }
+.reseller-table .reseller-path-text { display: inline-block; flex: 0 1 160px; min-width: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reseller-table .reseller-quota-cell { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.reseller-table .reseller-quota-cell small { line-height: 1.4; }
+.reseller-table .reseller-permission-tag { margin-inline-end: 0; }
+.reseller-mobile-list { min-width: 0; }
+
+/* Inbounds: single page title, balanced summary tiles and usable client filters. */
+.inbounds-page .inbounds-page-heading { min-width: 0; }
+.inbounds-page-heading p { max-width: 760px; line-height: 1.55; }
+.inbounds-page .inbounds-stats-grid { align-items: stretch; }
+.inbound-summary-card { min-height: 104px; padding: 14px; }
+.inbound-summary-card small { white-space: normal; }
+.inbound-online-summary { cursor: pointer; transition: border-color .16s ease, transform .16s ease; }
+.inbound-online-summary:hover,
+.inbound-online-summary:focus-visible { border-color: rgba(139,81,255,.55); transform: translateY(-1px); outline: none; }
+.inbounds-toolbar { min-width: 0; flex-wrap: wrap; }
+.inbounds-search { flex: 1 1 320px; min-width: 220px; }
+.inbounds-filter-select { flex: 0 1 145px; min-width: 128px; width: 145px; }
+.inbounds-client-filter { flex-basis: 220px; width: 220px; }
+.inbounds-table .ant-table-body,
+.inbounds-table .ant-table-content { max-width: 100%; overflow-x: auto !important; }
+.inbounds-table .ant-table-tbody > tr > td { min-width: 0; }
+.inbounds-table .client-popup-item { max-width: 320px; overflow-wrap: anywhere; }
+.client-state-chip { display: none; }
+
+/* Current mobile drawer and navigation remain consistent with the new sidebar. */
+@media (max-width: 900px) {
+  #app.dark:not(.login-app) .ant-sidebar { position: static; flex: 0 0 0 !important; width: 0 !important; min-width: 0 !important; height: 0; overflow: visible; }
+  #app.dark:not(.login-app) .ant-sidebar > .ant-layout-sider { display: none !important; }
+  #app.dark:not(.login-app) #content-layout { width: auto !important; flex: 1 1 auto; min-width: 0; }
+  .rafael-mobile-menu-trigger { position: fixed; top: 12px; left: 12px; z-index: 1200; display: inline-flex !important; width: 40px; min-width: 40px; height: 40px; align-items: center; justify-content: center; padding: 0; border: 1px solid rgba(155,122,255,.4) !important; border-radius: 12px !important; background: #19233a !important; }
+  .rafael-mobile-drawer .ant-drawer-content-wrapper { width: min(292px, calc(100vw - 32px)) !important; }
+  .rafael-mobile-drawer .ant-drawer-body { height: 100%; overflow-y: auto; padding: 18px 14px 22px; }
+  .rafael-mobile-drawer .rafael-brand { min-height: 62px; margin-bottom: 10px; }
+
+  .index-page .overview-grid { gap: 10px; }
+  .overview-resource-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .overview-resource-grid .overview-meter-card,
+  .overview-resource-grid .overview-meter-card > .ant-card-body { min-height: 92px; }
+  .overview-resource-grid .overview-meter-card > .ant-card-body { grid-template-columns: 42px minmax(0, 1fr) 48px; gap: 10px; padding: 11px 13px; }
+  .overview-meter-icon { width: 40px; height: 40px; }
+  .overview-meter-copy strong { font-size: 18px; }
+  .overview-meter-copy small { font-size: 10px; }
+  .overview-meter-ring,
+  .overview-meter-ring .ant-progress-inner { width: 46px !important; height: 46px !important; }
+
+  .resellers-page .ant-row.reseller-summary-grid,
+  .multilinks-page .ant-row.multilink-stats-grid,
+  .nodes-page .ant-row.nodes-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .reseller-summary-card,
+  .reseller-summary-card .ant-card-body { min-height: 88px; }
+  .reseller-summary-card .ant-card-body { padding: 12px; }
+  .reseller-management-card .ant-card-head-wrapper { flex-wrap: wrap; gap: 8px; }
+  .reseller-table { display: none; }
+
+  .inbounds-page .inbounds-layout { gap: 12px; }
+  .inbounds-page .inbounds-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .inbound-summary-card { min-height: 90px; padding: 11px; }
+  .inbounds-page .inbounds-page-heading { align-items: center; gap: 10px; }
+  .inbounds-page-heading p { font-size: 11px; }
+  .inbounds-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .inbounds-search { grid-column: 1 / -1; min-width: 0; width: 100%; }
+  .inbounds-filter-select,
+  .inbounds-client-filter { width: 100%; min-width: 0; }
+  .inbounds-result-count { display: block; grid-column: 1 / -1; text-align: right; }
+  .client-state-chip { display: inline-flex; align-items: center; width: fit-content; padding: 1px 7px; border-radius: 999px; font-size: 10px; line-height: 17px; white-space: nowrap; }
+  .client-state-chip.online { color: #56dfaa; background: rgba(30,190,132,.13); }
+  .client-state-chip.depleted { color: #ffc36b; background: rgba(242,160,39,.14); }
+  .client-state-chip.disabled { color: #a5afc1; background: rgba(141,153,174,.12); }
+}
+
+@media (max-width: 420px) {
+  .resellers-page .ant-row.reseller-summary-grid,
+  .multilinks-page .ant-row.multilink-stats-grid,
+  .nodes-page .ant-row.nodes-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .reseller-summary-card .ant-card-body { padding: 10px; }
+  .reseller-summary-card .ant-statistic-title { font-size: 10px; }
+  .reseller-summary-card .ant-statistic-content { font-size: 19px; }
+  .inbounds-page .inbounds-stats-grid { grid-template-columns: minmax(0, 1fr); }
+  .inbounds-page .inbounds-page-heading { align-items: flex-start; }
+  .inbounds-add-button { min-height: 36px; padding-inline: 8px; font-size: 11px; }
+  .inbound-summary-card { min-height: 78px; }
+}

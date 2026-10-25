@@ -1,0 +1,672 @@
+{{ template "page/head_start" .}}
+{{ template "page/head_end" .}}
+
+{{ template "page/body_start" .}}
+<a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' multilinks-page'">
+  <a-sidebar></a-sidebar>
+  <a-layout id="content-layout">
+    <a-panel-topbar title="Multi link" subtitle="Combine subscriptions and monitor shared usage"></a-panel-topbar>
+    <a-layout-content>
+      <a-spin :spinning="loadingStates.spinning" :delay="300" tip='{{ i18n "loading"}}' size="large">
+        <transition name="list" appear>
+          <a-alert
+            v-if="!loginIsAdmin && resellerQuota && loadingStates.fetched"
+            type="info"
+            show-icon
+            :style="{ marginBottom: '10px' }">
+            <template slot="message">
+              Remaining reseller quota
+            </template>
+            <template slot="description">
+              <a-space wrap>
+                <a-tag color="geekblue">Users: [[ formatResellerUsers() ]]</a-tag>
+                <a-tag color="purple">Assigned: [[ formatResellerTraffic(resellerQuota.assignedTotal || 0) ]]</a-tag>
+                <a-tag color="blue">Users left: [[ resellerQuota.remainingUsers >= 0 ? resellerQuota.remainingUsers : 'Unlimited' ]]</a-tag>
+                <a-tag color="cyan">Traffic left: [[ formatResellerTraffic(resellerQuota.remainingTraffic) ]]</a-tag>
+                <a-tag color="green">Used: [[ SizeFormatter.sizeFormat(resellerQuota.usedTraffic || 0) ]]</a-tag>
+              </a-space>
+            </template>
+          </a-alert>
+        </transition>
+        <transition name="list" appear>
+          <a-row v-if="!loadingStates.fetched">
+            <div :style="{ minHeight: 'calc(100vh - 120px)' }"></div>
+          </a-row>
+          <a-row :gutter="[isMobile ? 8 : 16, isMobile ? 0 : 12]" v-else>
+            <a-col>
+              <a-card size="small" :style="{ padding: '16px' }" hoverable>
+                <a-row class="multilink-stats-grid">
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Total Multi links' :value="rows.length">
+                      <template #prefix><a-icon type="link"></a-icon></template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Online' :value="onlineCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix><a-icon type="wifi"></a-icon></template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Watching 95%+' :value="watchingCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix><a-icon type="eye"></a-icon></template>
+                    </a-custom-statistic>
+                  </a-col>
+                  <a-col :sm="12" :md="6">
+                    <a-custom-statistic title='Finished' :value="finishedCount" :style="{ marginTop: isMobile ? '10px' : 0 }">
+                      <template #prefix><a-icon type="warning"></a-icon></template>
+                    </a-custom-statistic>
+                  </a-col>
+                </a-row>
+              </a-card>
+            </a-col>
+            <a-col>
+              <a-card hoverable>
+                <template #title>
+                  <a-space direction="horizontal" :wrap="true">
+                    <a-button type="primary" icon="plus" @click="openCreateLauncher">Create Multi link</a-button>
+                    <a-button icon="reload" :loading="refreshing" @click="loadRows(true)">Refresh</a-button>
+                    <a-switch v-model="autoRefreshEnabled"></a-switch>
+                    <span>Auto refresh</span>
+                  </a-space>
+                </template>
+                <a-space direction="vertical" style="width: 100%;">
+                  <div :style="isMobile ? {} : { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }">
+                    <a-input v-model.trim="searchKey" placeholder='{{ i18n "search" }}' :style="{ maxWidth: '320px' }"></a-input>
+                    <a-radio-group v-model="statusFilter" button-style="solid" :style="isMobile ? { marginTop: '.5rem', display: 'flex' } : {}">
+                      <a-radio-button value="">All</a-radio-button>
+                      <a-radio-button value="online">Online</a-radio-button>
+                      <a-radio-button value="watching">Watching</a-radio-button>
+                      <a-radio-button value="finished">Finished</a-radio-button>
+                      <a-radio-button value="disabled">Disabled</a-radio-button>
+                    </a-radio-group>
+                  </div>
+                  <a-table v-if="!isMobile" class="multilink-table"
+                    :columns="columns"
+                    :row-key="record => record.subId"
+                    :data-source="filteredRows"
+                    :pagination="pagination(filteredRows)"
+                    :table-layout="'fixed'"
+                    :scroll="isMobile ? {} : { x: 1200 }">
+                    <template slot="sub" slot-scope="text, record">
+                      <div style="font-weight:600;">[[ record.subId ]]</div>
+                      <div style="opacity:.72;">[[ record.clientCount ]] clients / [[ record.inboundIds.length ]] inbounds</div>
+                    </template>
+                    <template slot="status" slot-scope="text, record">
+                      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; max-width: 180px;">
+                        <a-tag :color="statusColor(record.status)" style="margin-right:0; padding:0 6px; font-size:12px; line-height:20px;">[[ record.statusLabel || record.status ]]</a-tag>
+                        <a-tag v-if="record.enabled" color="blue" style="margin-right:0; padding:0 6px; font-size:12px; line-height:20px;">enabled</a-tag>
+                      </div>
+                    </template>
+                    <template slot="usage" slot-scope="text, record">
+                      <div style="width: 220px; max-width: 220px; overflow: hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:4px; font-size:12px; white-space:nowrap; width:220px;">
+                          <span>[[ SizeFormatter.sizeFormat(record.used) ]]</span>
+                          <span style="opacity:.72;">[[ record.total > 0 ? SizeFormatter.sizeFormat(record.total) : 'Unlimited' ]]</span>
+                        </div>
+                        <a-progress
+                          :percent="Math.min(100, Number(record.usagePct || 0).toFixed(1))"
+                          :stroke-color="usageColor(record)"
+                          :status="record.finished ? 'exception' : 'active'"
+                          :show-info="false" />
+                        <div style="display:flex; justify-content:space-between; margin-top:4px; gap:8px; flex-wrap:wrap;">
+                          <span style="opacity:.72; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Remaining: [[ record.total > 0 ? SizeFormatter.sizeFormat(record.remaining) : '-' ]]</span>
+                          <a-tag :color="usageColor(record)" style="margin-right:0;">[[ Number(record.usagePct || 0).toFixed(1) ]]%</a-tag>
+                        </div>
+                      </div>
+                    </template>
+                    <template slot="expiry" slot-scope="text, record">
+                      [[ record.expiryTime > 0 ? formatTime(record.expiryTime) : 'Never' ]]
+                    </template>
+                    <template slot="links" slot-scope="text, record">
+                      <a-space size="small">
+                        <a-button size="small" icon="qrcode" @click="openQr(record)" :disabled="!getSubURL(record)">QR</a-button>
+                        <a-button size="small" icon="copy" @click="copySub(record)" :disabled="!getSubURL(record)">Copy</a-button>
+                      </a-space>
+                    </template>
+                    <template slot="action" slot-scope="text, record">
+                      <a-dropdown :trigger="['click']">
+                        <a-icon @click="e => e.preventDefault()" type="more" :style="{ fontSize: '20px' }"></a-icon>
+                        <a-menu slot="overlay" @click="a => clickAction(a, record)" :theme="themeSwitcher.currentTheme">
+                          <a-menu-item key="edit"><a-icon type="edit"></a-icon>{{ i18n "edit" }}</a-menu-item>
+                          <a-menu-item key="toggle"><a-icon type="poweroff"></a-icon>[[ record.enabled ? 'Disable' : 'Enable' ]]</a-menu-item>
+                          <a-menu-item key="qr"><a-icon type="qrcode"></a-icon>QR Code</a-menu-item>
+                          <a-menu-item key="copy"><a-icon type="copy"></a-icon>Copy Sub Link</a-menu-item>
+                          <a-menu-item key="delete"><span :style="{ color: '#FF4D4F' }"><a-icon type="delete"></a-icon>{{ i18n "delete" }}</span></a-menu-item>
+                        </a-menu>
+                      </a-dropdown>
+                    </template>
+                  </a-table>
+                  <div v-else class="multilink-mobile-list">
+                    <a-card v-for="record in filteredRows" :key="record.subId" class="multilink-mobile-card" :bordered="false">
+                      <div class="multilink-mobile-head"><div><strong>[[ record.subId ]]</strong><div class="muted">[[ record.clientCount ]] clients · [[ record.inboundIds.length ]] inbounds</div></div><a-tag :color="statusColor(record.status)">[[ record.statusLabel || record.status ]]</a-tag></div>
+                      <div class="multilink-mobile-usage"><div><span>Usage</span><b>[[ SizeFormatter.sizeFormat(record.used) ]] / [[ record.total > 0 ? SizeFormatter.sizeFormat(record.total) : 'Unlimited' ]]</b></div><a-progress :percent="Math.min(100, Number(record.usagePct || 0).toFixed(1))" :stroke-color="usageColor(record)" :status="record.finished ? 'exception' : 'active'" :show-info="false" /></div>
+                      <div class="multilink-mobile-meta"><span>Expires <b>[[ record.expiryTime > 0 ? formatTime(record.expiryTime) : 'Never' ]]</b></span><span>Remaining <b>[[ record.total > 0 ? SizeFormatter.sizeFormat(record.remaining) : 'Unlimited' ]]</b></span></div>
+                      <div class="multilink-mobile-actions"><a-button size="small" icon="qrcode" @click="openQr(record)" :disabled="!getSubURL(record)">QR</a-button><a-button size="small" icon="copy" @click="copySub(record)" :disabled="!getSubURL(record)">Copy link</a-button><a-dropdown :trigger="['click']"><a-button size="small" icon="more"></a-button><a-menu slot="overlay" @click="a => clickAction(a, record)" :theme="themeSwitcher.currentTheme"><a-menu-item key="edit"><a-icon type="edit"></a-icon>Edit</a-menu-item><a-menu-item key="toggle"><a-icon type="poweroff"></a-icon>[[ record.enabled ? 'Disable' : 'Enable' ]]</a-menu-item><a-menu-item key="delete"><a-icon type="delete"></a-icon>{{ i18n "delete" }}</a-menu-item></a-menu></a-dropdown></div>
+                    </a-card>
+                    <a-empty v-if="!filteredRows.length" description='{{ i18n "noData" }}'></a-empty>
+                  </div>
+                </a-space>
+              </a-card>
+            </a-col>
+          </a-row>
+        </transition>
+      </a-spin>
+
+      <a-drawer
+        title="Create Multi link"
+        :visible="launcherVisible"
+        :width="isMobile ? '100%' : 460"
+        placement="right"
+        :class="themeSwitcher.currentTheme + ' multilink-launcher-drawer'"
+        @close="launcherVisible = false">
+        <a-form-model layout="vertical" :model="launcher">
+          <a-form-model-item label="Template Inbound">
+            <a-select v-model="launcher.primaryInboundId" show-search :dropdown-class-name="themeSwitcher.currentTheme">
+              <a-select-option v-for="item in launcherInbounds" :key="item.value" :value="item.value">[[ item.label ]]</a-select-option>
+            </a-select>
+          </a-form-model-item>
+          <a-form-model-item label="Selected Inbounds">
+            <a-select v-model="launcher.selectedInboundIds" mode="multiple" :dropdown-class-name="themeSwitcher.currentTheme">
+              <a-select-option v-for="item in launcherSelectableInbounds" :key="item.value" :value="item.value">[[ item.label ]]</a-select-option>
+            </a-select>
+          </a-form-model-item>
+        </a-form-model>
+        <div class="multilink-drawer-footer"><a-button @click="launcherVisible = false">Cancel</a-button><a-button type="primary" @click="openClientCreateModal">Continue</a-button></div>
+      </a-drawer>
+
+      <a-modal
+        title="Update Multi link"
+        :visible="modalVisible"
+        :confirm-loading="saving"
+        :class="themeSwitcher.currentTheme"
+        @ok="saveRow"
+        @cancel="closeModal">
+        <a-form-model layout="vertical" :model="editing">
+          <a-form-model-item label="Sub ID">
+            <a-input :value="editing.subId" disabled></a-input>
+          </a-form-model-item>
+          <a-form-model-item label="Total Traffic (GB)">
+            <a-input-number v-model="editing.totalGB" :min="loginIsAdmin ? 0 : 0.1" :step="0.1" style="width:100%;"></a-input-number>
+            <div style="margin-top: 6px; opacity: .72; font-size: 12px;">
+              [[ loginIsAdmin ? 'Leave empty or zero for unlimited traffic.' : 'Resellers must assign a finite traffic amount.' ]]
+            </div>
+          </a-form-model-item>
+          <a-form-model-item label="Expire Time">
+            <a-date-picker
+              :show-time="{ format: 'HH:mm:ss' }"
+              format="YYYY-MM-DD HH:mm:ss"
+              :dropdown-class-name="themeSwitcher.currentTheme"
+              v-model="editing.expiryMoment"
+              style="width:100%;"></a-date-picker>
+          </a-form-model-item>
+          <a-form-model-item label="Renew / Reset Days">
+            <a-input-number v-model="editing.reset" :min="0" style="width:100%;"></a-input-number>
+          </a-form-model-item>
+          <a-form-model-item label="Enable">
+            <a-switch v-model="editing.enable"></a-switch>
+          </a-form-model-item>
+          <a-form-model-item label="Reset Traffic Counters">
+            <a-switch v-model="editing.resetTraffic"></a-switch>
+          </a-form-model-item>
+        </a-form-model>
+      </a-modal>
+
+      <a-modal
+        title="Subscription QR"
+        :visible="qrVisible"
+        :footer="null"
+        :class="themeSwitcher.currentTheme"
+        @cancel="qrVisible = false">
+        <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
+          <canvas id="multilink-sub-qr"></canvas>
+          <a-input :value="qrContent" readonly></a-input>
+          <a-button type="primary" icon="copy" @click="copyQr">Copy Sub Link</a-button>
+        </div>
+      </a-modal>
+    </a-layout-content>
+  </a-layout>
+</a-layout>
+
+{{template "page/body_scripts" .}}
+<script src="{{ .asset_path }}assets/qrcode/qrious2.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/uri/URI.min.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/js/model/reality_targets.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/js/model/inbound.js?{{ .cur_ver }}"></script>
+<script src="{{ .asset_path }}assets/js/model/dbinbound.js?{{ .cur_ver }}"></script>
+{{template "component/aSidebar" .}}
+{{template "component/aThemeSwitch" .}}
+{{template "component/aCustomStatistic" .}}
+{{template "component/aPersianDatepicker" .}}
+{{template "modals/clientsModal" .}}
+
+<script>
+  const app = new Vue({
+    delimiters: ['[[', ']]'],
+    el: '#app',
+    mixins: [MediaQueryMixin],
+    data: {
+      themeSwitcher,
+      SizeFormatter,
+      loadingStates: { fetched: false, spinning: false },
+      refreshing: false,
+      saving: false,
+      modalVisible: false,
+      launcherVisible: false,
+      qrVisible: false,
+      qrContent: '',
+      rows: [],
+      dbInbounds: [],
+      searchKey: '',
+      statusFilter: '',
+      autoRefreshEnabled: true,
+      autoRefreshHandle: null,
+      subSettings: {
+        enable: false,
+        subTitle: '',
+        subURI: '',
+        subPort: 2096,
+        subPath: '/sub/',
+        subJsonURI: '',
+        subJsonEnable: false,
+      },
+      remarkModel: '-ieo',
+      loginIsAdmin,
+      resellerQuota: null,
+      editing: {
+        subId: '',
+        totalGB: null,
+        expiryMoment: null,
+        reset: 0,
+        enable: true,
+        resetTraffic: false,
+      },
+      launcher: {
+        primaryInboundId: null,
+        selectedInboundIds: [],
+      },
+      columns: [
+        { title: 'Multi link', key: 'sub', width: 240, scopedSlots: { customRender: 'sub' } },
+        { title: 'Status', key: 'status', width: 180, scopedSlots: { customRender: 'status' } },
+        { title: 'Usage', key: 'usage', width: 240, scopedSlots: { customRender: 'usage' } },
+        { title: 'Expire', key: 'expiry', width: 150, scopedSlots: { customRender: 'expiry' } },
+        { title: 'Sub link', key: 'links', width: 140, scopedSlots: { customRender: 'links' } },
+        { title: 'Action', key: 'action', width: 90, scopedSlots: { customRender: 'action' } },
+      ],
+    },
+    computed: {
+      filteredRows() {
+        const key = this.searchKey.toLowerCase();
+        return this.rows.filter(row => {
+          const statusMatch = !this.statusFilter || row.status === this.statusFilter;
+          const keyMatch = !key ||
+            row.subId.toLowerCase().includes(key) ||
+            row.emails.some(email => email.toLowerCase().includes(key)) ||
+            row.inboundTags.some(tag => tag.toLowerCase().includes(key));
+          return statusMatch && keyMatch;
+        });
+      },
+      onlineCount() { return this.rows.filter(row => row.online).length; },
+      watchingCount() { return this.rows.filter(row => row.watching).length; },
+      finishedCount() { return this.rows.filter(row => row.finished).length; },
+      launcherInbounds() {
+        return this.dbInbounds
+          .filter(row => row && row.id > 0)
+          .map(row => ({
+            label: `${row.remark || row.tag || ('Inbound #' + row.id)} (${row.protocol}@${row.port})`,
+            value: row.id,
+            protocol: row.protocol,
+          }));
+      },
+      launcherSelectableInbounds() {
+        if (!this.launcher.primaryInboundId) {
+          return this.launcherInbounds;
+        }
+        const primary = this.dbInbounds.find(row => row.id === this.launcher.primaryInboundId);
+        if (!primary) {
+          return this.launcherInbounds;
+        }
+        return this.launcherInbounds.filter(item => item.protocol === primary.protocol);
+      },
+    },
+    watch: {
+      autoRefreshEnabled() {
+        this.syncAutoRefresh();
+      },
+      'launcher.primaryInboundId'(value) {
+        if (!value) return;
+        if (!this.launcher.selectedInboundIds.includes(value)) {
+          this.launcher.selectedInboundIds = [value];
+        }
+      },
+    },
+    methods: {
+      pagination(data) {
+        return data.length > 10 ? { pageSize: 10 } : false;
+      },
+      loading(spinning = true) {
+        this.loadingStates.spinning = spinning;
+      },
+      formatResellerTraffic(value) {
+        if (value < 0) {
+          return 'Unlimited';
+        }
+        return `${(Number(value || 0) / SizeFormatter.ONE_GB).toFixed(1)} GB`;
+      },
+      formatResellerUsers() {
+        if (!this.resellerQuota) {
+          return '-';
+        }
+        const maxUsers = Number(this.resellerQuota.maxUsers || 0);
+        return `${Number(this.resellerQuota.clientCount || 0)} / ${maxUsers > 0 ? maxUsers : 'Unlimited'}`;
+      },
+      async getResellerQuota() {
+        if (this.loginIsAdmin) {
+          this.resellerQuota = null;
+          return;
+        }
+        const msg = await HttpUtil.get(`${panelApiPath}/resellers/me`);
+        if (msg.success) {
+          this.resellerQuota = msg.obj || null;
+        }
+      },
+      async getDBInbounds() {
+        const msg = await HttpUtil.get(`${panelApiPath}/inbounds/list`);
+        if (!msg.success) {
+          return;
+        }
+        this.dbInbounds = (msg.obj || []).slice().sort((a, b) => {
+          const portA = Number(a?.port || 0);
+          const portB = Number(b?.port || 0);
+          if (portA === portB) {
+            return Number(a?.id || 0) - Number(b?.id || 0);
+          }
+          return portA - portB;
+        }).map(row => new DBInbound(row));
+      },
+      async getDefaultSettings() {
+        const msg = await HttpUtil.post(`${panelPath}setting/defaultSettings`);
+        if (!msg.success) {
+          return;
+        }
+        const settings = msg.obj || {};
+        this.remarkModel = settings.remarkModel || '-ieo';
+        this.subSettings = {
+          enable: settings.subEnable,
+          subTitle: settings.subTitle,
+          subURI: settings.subURI,
+          subPort: settings.subPort || 2096,
+          subPath: settings.subPath || '/sub/',
+          subJsonURI: settings.subJsonURI,
+          subJsonEnable: settings.subJsonEnable,
+        };
+      },
+      async loadRows(showSpinner = false) {
+        if (showSpinner) this.loading();
+        this.refreshing = true;
+        await this.getResellerQuota();
+        const msg = await HttpUtil.get(`${panelApiPath}/multilinks/list`);
+        this.refreshing = false;
+        if (showSpinner) this.loading(false);
+        if (msg.success) {
+          this.rows = Array.isArray(msg.obj) ? msg.obj : [];
+          this.loadingStates.fetched = true;
+        }
+      },
+      syncAutoRefresh() {
+        if (this.autoRefreshHandle) {
+          clearInterval(this.autoRefreshHandle);
+          this.autoRefreshHandle = null;
+        }
+        if (this.autoRefreshEnabled) {
+          this.autoRefreshHandle = setInterval(() => this.loadRows(false), 8000);
+        }
+      },
+      statusColor(status) {
+        switch (status) {
+          case 'finished': return 'orange';
+          case 'online': return 'green';
+          case 'disabled': return 'default';
+          case 'expiring': return 'gold';
+          case 'watching': return 'orange';
+          default: return 'blue';
+        }
+      },
+      usageColor(row) {
+        if (row.finished) return '#fa8c16';
+        if (row.watching) return '#fa8c16';
+        if (!row.total || row.total <= 0) return '#7a316f';
+        return ColorUtils.usageColor(row.used, 0, row.total);
+      },
+      formatTime(ts) {
+        return ts > 0 ? moment(ts).format('YYYY-MM-DD HH:mm:ss') : '-';
+      },
+      clickAction(action, row) {
+        switch (action.key) {
+          case 'edit':
+            this.openEdit(row);
+            break;
+          case 'toggle':
+            this.toggleRow(row);
+            break;
+          case 'qr':
+            this.openQr(row);
+            break;
+          case 'copy':
+            this.copySub(row);
+            break;
+          case 'delete':
+            this.deleteRow(row);
+            break;
+        }
+      },
+      async openCreateLauncher() {
+        if (!this.dbInbounds.length) {
+          await this.getDBInbounds();
+        }
+        if (!this.dbInbounds.length) {
+          this.$message.warning('No inbound available yet');
+          return;
+        }
+        const primary = this.dbInbounds[0];
+        this.launcher = {
+          primaryInboundId: primary.id,
+          selectedInboundIds: [primary.id],
+        };
+        this.launcherVisible = true;
+      },
+      openClientCreateModal() {
+        const baseInbound = this.dbInbounds.find(row => row.id === this.launcher.primaryInboundId);
+        const selectedInboundIds = (this.launcher.selectedInboundIds || []).filter(Boolean);
+        if (!baseInbound || selectedInboundIds.length === 0) {
+          this.$message.warning('Select at least one inbound');
+          return;
+        }
+        this.launcherVisible = false;
+        clientModal.show({
+          title: 'Create Multi link',
+          okText: '{{ i18n "sure" }}',
+          dbInbound: baseInbound,
+          confirm: async (client, dbInboundId, options) => {
+            clientModal.loading();
+            await this.addClient(client, dbInboundId, clientModal, {
+              multiLink: true,
+              multiInboundIds: selectedInboundIds,
+              clients: Array.isArray(options?.clients) ? options.clients : [client].filter(Boolean),
+            });
+            clientModal.close();
+            await this.loadRows(false);
+          },
+          isEdit: false,
+        });
+        clientModal.multiLink = true;
+        clientModal.selectedInboundIds = selectedInboundIds;
+      },
+      async addClient(clients, dbInboundId, modal, options = {}) {
+        const clientList = Array.isArray(options.clients) && options.clients.length > 0
+          ? options.clients
+          : (Array.isArray(clients) ? clients : [clients].filter(Boolean));
+        const effectiveClients = options.multiLink ? clientList.slice(-1) : clientList;
+        const data = {
+          id: dbInboundId,
+          settings: '{"clients": [' + effectiveClients.toString() + ']}',
+        };
+        if (options.multiLink) {
+          data.multiLink = true;
+          data.multiInboundIds = options.multiInboundIds || [];
+        }
+        await this.submit(`${panelApiPath}/inbounds/addClient`, data, modal);
+      },
+      async submit(url, data, modal) {
+        const msg = await HttpUtil.postWithModal(url, data, modal);
+        if (msg.success) {
+          await this.getResellerQuota();
+          await this.getDBInbounds();
+        }
+        return msg;
+      },
+      getSubURL(row) {
+        if (!row) return '';
+        if (row.subUrl) return row.subUrl;
+        if (!row.subId) return '';
+        const protocol = window.location.protocol || 'http:';
+        const hostname = window.location.hostname || window.location.host || '';
+        const subPort = Number(this.subSettings.subPort || 2096);
+        const rawPath = (this.subSettings.subPath || '/sub/').trim() || '/sub/';
+        const path = rawPath.endsWith('/') ? rawPath : `${rawPath}/`;
+        if (!hostname) return '';
+        return `${protocol}//${hostname}:${subPort}${path}${row.subId}`;
+      },
+      copySub(row) {
+        const content = this.getSubURL(row);
+        if (!content) {
+          this.$message.warning('No subscription link available yet');
+          return;
+        }
+        ClipboardManager.copyText(content).then(() => this.$message.success('{{ i18n "copied" }}'));
+      },
+      openQr(row) {
+        this.qrContent = this.getSubURL(row);
+        if (!this.qrContent) {
+          this.$message.warning('No subscription link available yet');
+          return;
+        }
+        this.qrVisible = true;
+        this.$nextTick(() => {
+          new QRious({
+            element: document.querySelector('#multilink-sub-qr'),
+            size: 360,
+            value: this.qrContent,
+            background: 'white',
+            foreground: 'black',
+            padding: 2,
+            level: 'L',
+          });
+        });
+      },
+      copyQr() {
+        if (!this.qrContent) {
+          this.$message.warning('No subscription link available yet');
+          return;
+        }
+        ClipboardManager.copyText(this.qrContent).then(() => this.$message.success('{{ i18n "copied" }}'));
+      },
+      openEdit(row) {
+        this.editing = {
+          subId: row.subId,
+          totalGB: row.total > 0 ? Number((row.total / SizeFormatter.ONE_GB).toFixed(1)) : null,
+          expiryMoment: row.expiryTime > 0 ? moment(row.expiryTime) : null,
+          reset: row.reset || 0,
+          enable: row.enabled || row.finished,
+          resetTraffic: false,
+        };
+        this.modalVisible = true;
+      },
+      closeModal() {
+        this.modalVisible = false;
+      },
+      async saveRow() {
+        this.saving = true;
+        const rawTotal = this.editing.totalGB;
+        const hasFiniteTotal = rawTotal !== null && rawTotal !== '' && !Number.isNaN(Number(rawTotal));
+        if (!this.loginIsAdmin && (!hasFiniteTotal || Number(rawTotal) <= 0)) {
+          this.saving = false;
+          this.$message.error('Resellers must assign a finite traffic amount.');
+          return;
+        }
+        const payload = {
+          totalGB: hasFiniteTotal ? Math.max(0, Math.round(Number(rawTotal) * SizeFormatter.ONE_GB)) : 0,
+          expiryTime: this.editing.expiryMoment ? this.editing.expiryMoment.valueOf() : 0,
+          reset: this.editing.reset || 0,
+          enable: this.editing.enable,
+          resetTraffic: this.editing.resetTraffic,
+        };
+        const msg = await HttpUtil.post(`${panelApiPath}/multilinks/update/${encodeURIComponent(this.editing.subId)}`, payload);
+        this.saving = false;
+        if (msg.success) {
+          this.closeModal();
+          await this.getResellerQuota();
+          await this.loadRows(false);
+        }
+      },
+      async toggleRow(row) {
+        const msg = await HttpUtil.post(`${panelApiPath}/multilinks/setEnabled/${encodeURIComponent(row.subId)}`, {
+          enabled: !row.enabled,
+        });
+        if (msg.success) {
+          await this.getResellerQuota();
+          await this.loadRows(false);
+        }
+      },
+      deleteRow(row) {
+        this.$confirm({
+          title: 'Delete Multi link',
+          content: 'All linked clients in all selected inbounds will be deleted.',
+          class: themeSwitcher.currentTheme,
+          okText: '{{ i18n "delete" }}',
+          cancelText: '{{ i18n "cancel" }}',
+          onOk: async () => {
+            const msg = await HttpUtil.post(`${panelApiPath}/multilinks/delete/${encodeURIComponent(row.subId)}`);
+            if (msg.success) {
+              await this.getResellerQuota();
+              await this.loadRows(false);
+            }
+          },
+        });
+      },
+    },
+    async mounted() {
+      await this.getDBInbounds();
+      await this.getDefaultSettings();
+      await this.getResellerQuota();
+      await this.loadRows(true);
+      this.syncAutoRefresh();
+      if (window.wsClient) {
+        let invalidateTimer = null;
+        const refreshRows = () => {
+          this.getResellerQuota();
+          this.getDBInbounds();
+          this.loadRows(false);
+        };
+        window.wsClient.on('invalidate', (payload) => {
+          const dataType = payload?.dataType || payload;
+          if (dataType === 'inbounds') {
+            if (invalidateTimer) clearTimeout(invalidateTimer);
+            invalidateTimer = setTimeout(() => {
+              invalidateTimer = null;
+              refreshRows();
+            }, 300);
+          }
+        });
+        window.wsClient.on('inbounds', () => {
+          refreshRows();
+        });
+      }
+    },
+    beforeDestroy() {
+      if (this.autoRefreshHandle) {
+        clearInterval(this.autoRefreshHandle);
+      }
+    },
+  });
+</script>
+{{ template "page/body_end" .}}

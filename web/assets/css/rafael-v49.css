@@ -1,0 +1,253 @@
+/* Rafael v49 visual system, based on the approved second concept. */
+:root {
+  --rafael-bg: #0b1020;
+  --rafael-side: #0c1222;
+  --rafael-surface: #131b2d;
+  --rafael-surface-raised: #182238;
+  --rafael-border: rgba(130, 151, 190, .15);
+  --rafael-text: #e7eaf3;
+  --rafael-muted: #929bb1;
+  --rafael-purple: #7441ee;
+  --rafael-amber: #ffb33e;
+}
+
+/* Application frame and navigation */
+#app.dark:not(.login-app) {
+  background: var(--rafael-bg);
+  color: var(--rafael-text);
+}
+#app.dark:not(.login-app) #content-layout {
+  height: 100vh;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--rafael-bg);
+}
+#app.dark:not(.login-app) .ant-sidebar > .ant-layout-sider,
+#app.dark:not(.login-app) .ant-drawer-content {
+  background: var(--rafael-side) !important;
+  border-right: 1px solid var(--rafael-border);
+}
+#app.dark:not(.login-app) .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+}
+.rafael-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 9px 18px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--rafael-border);
+}
+.rafael-brand-mark,
+.login-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(145deg, #8d4dff 8%, #6025de 53%, #ffb53d 100%);
+  box-shadow: 0 8px 24px rgba(106, 50, 234, .3);
+}
+.rafael-brand-copy { display: flex; flex-direction: column; line-height: 1.1; }
+.rafael-brand-copy strong { color: #f4f5fb; font-size: 19px; letter-spacing: .2px; }
+.rafael-brand-copy small { margin-top: 6px; color: var(--rafael-muted); font-size: 9px; letter-spacing: 1.8px; }
+.ant-layout-sider-collapsed .rafael-brand { justify-content: center; padding-inline: 0; }
+.ant-layout-sider-collapsed .rafael-brand-copy { display: none; }
+#app.dark:not(.login-app) .ant-menu { margin-top: 12px; background: transparent !important; color: var(--rafael-muted); }
+#app.dark:not(.login-app) .ant-menu-item { height: 44px; line-height: 44px; margin: 5px 0; padding-inline: 14px !important; border-radius: 11px; }
+#app.dark:not(.login-app) .ant-menu-item .anticon { margin-right: 12px; font-size: 16px; }
+#app.dark:not(.login-app) .ant-menu-item-selected,
+#app.dark:not(.login-app) .ant-menu-item-selected:hover {
+  color: #fff !important;
+  background: linear-gradient(100deg, rgba(113, 63, 236, .3), rgba(113, 63, 236, .11)) !important;
+  box-shadow: inset 3px 0 #895dff;
+}
+#app.dark:not(.login-app) .ant-menu-item:hover { color: #fff; background: rgba(255,255,255,.045); }
+#app.dark:not(.login-app) .ant-menu-theme-switch { margin-bottom: 10px; }
+
+/* Page heading */
+.rafael-topbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 92px;
+  padding: 17px 30px 16px;
+  border-bottom: 1px solid var(--rafael-border);
+  background: rgba(13, 19, 34, .88);
+}
+.rafael-topbar-eyebrow { color: #a78aff; font-size: 10px; font-weight: 700; letter-spacing: 1.7px; }
+.rafael-topbar h1 { margin: 4px 0 0; color: #f1f3fa; font-size: 23px; font-weight: 650; line-height: 1.2; }
+.rafael-topbar p { margin: 5px 0 0; color: var(--rafael-muted); font-size: 12px; }
+.rafael-topbar-profile { display: flex; align-items: center; gap: 15px; }
+.rafael-secure-pill { display: inline-flex; align-items: center; gap: 8px; color: #aab4ca; font-size: 11px; }
+.rafael-secure-pill i { width: 7px; height: 7px; border-radius: 50%; background: #35c99b; box-shadow: 0 0 12px rgba(53,201,155,.65); }
+.rafael-topbar-avatar { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border: 1px solid rgba(146,117,255,.38); border-radius: 13px; color: #d7c9ff; font-weight: 700; background: linear-gradient(145deg, #292148, #171b2b); }
+#app.light .rafael-topbar { color: #20283a; background: #fff; border-bottom-color: rgba(30,48,84,.1); }
+#app.light .rafael-topbar h1 { color: #1c2538; }
+#app.light .rafael-topbar p,
+#app.light .rafael-secure-pill,
+#app.light .rafael-brand-copy small { color: #69758d; }
+#app.light .rafael-topbar-avatar { color: #6635da; background: #f2edff; }
+#app.light .rafael-brand-copy strong { color: #1c2538; }
+
+/* Cards, tables, forms and tabs */
+#app.dark:not(.login-app) #content-layout > .ant-layout-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 28px 32px;
+  background: var(--rafael-bg);
+}
+#app.dark:not(.login-app) .ant-card,
+#app.dark:not(.login-app) .ant-tabs,
+#app.dark:not(.login-app) .ant-alert {
+  color: var(--rafael-text);
+  background: var(--rafael-surface);
+  border: 1px solid var(--rafael-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+}
+#app.dark:not(.login-app) .ant-card-head { min-height: 48px; color: var(--rafael-text); border-bottom-color: var(--rafael-border); }
+#app.dark:not(.login-app) .ant-card-head-title { color: #e5e8f2; font-weight: 650; }
+#app.dark:not(.login-app) .ant-card-body { color: var(--rafael-text); }
+#app.dark:not(.login-app) .ant-card-hoverable:hover { border-color: rgba(139,104,255,.32); transform: translateY(-1px); }
+#app.dark:not(.login-app) .ant-table { border-radius: 14px; overflow: hidden; }
+#app.dark:not(.login-app) .ant-table-thead > tr > th { color: #aeb8cf; background: #101729; border-bottom-color: var(--rafael-border); }
+#app.dark:not(.login-app) .ant-table-tbody > tr > td { border-bottom-color: rgba(130,151,190,.1); }
+#app.dark:not(.login-app) .ant-table-tbody > tr:hover > td { background: rgba(132,101,245,.055); }
+#app.dark:not(.login-app) .ant-input,
+#app.dark:not(.login-app) .ant-input-number,
+#app.dark:not(.login-app) .ant-select-selection,
+#app.dark:not(.login-app) .ant-input-affix-wrapper,
+#app.dark:not(.login-app) .ant-picker {
+  color: #e6e9f2;
+  background: #11192b;
+  border-color: rgba(142,160,195,.18);
+  border-radius: 10px;
+}
+#app.dark:not(.login-app) .ant-input::placeholder { color: #76819b; }
+#app.dark:not(.login-app) .ant-btn-primary,
+#app.dark:not(.login-app) .ant-btn-primary:focus { color: #fff; background: linear-gradient(110deg,#7540ef,#5425d6); border-color: #7540ef; border-radius: 10px; box-shadow: 0 5px 16px rgba(100,51,222,.2); }
+#app.dark:not(.login-app) .ant-btn-primary:hover { background: linear-gradient(110deg,#8a5aff,#6838e9); border-color: #8a5aff; }
+#app.dark:not(.login-app) .ant-tabs-bar { border-bottom-color: var(--rafael-border); }
+#app.dark:not(.login-app) .ant-tabs-nav .ant-tabs-tab { color: var(--rafael-muted); }
+#app.dark:not(.login-app) .ant-tabs-nav .ant-tabs-tab-active { color: #bc9fff; }
+#app.dark:not(.login-app) .ant-tabs-ink-bar { background: #895dff; }
+#app.dark:not(.login-app) .ant-statistic-title { color: var(--rafael-muted); }
+#app.dark:not(.login-app) .ant-statistic-content { color: #eff1f8; }
+#app.dark:not(.login-app) .ant-tag { border-radius: 999px; }
+#app.dark:not(.login-app) .ant-alert-info { background: rgba(55,92,160,.14); }
+#app.dark:not(.login-app) .ant-alert-warning { background: rgba(255,179,62,.08); }
+#app.dark:not(.login-app) .ant-alert-error { background: rgba(208,59,76,.1); }
+.index-page .ant-card-head,
+.inbounds-page .ant-card-head,
+.multilinks-page .ant-card-head { background: rgba(255,255,255,.012); }
+.index-page .ant-card { min-height: 92px; }
+.index-page .ant-progress-circle .ant-progress-text { color: #e9e5fb; }
+.nodes-page .ant-card,
+.multilinks-page .ant-card { border-radius: 18px; }
+.settings-page .ant-tabs,
+.xray-page .ant-tabs { padding: 18px; }
+.xray-page .CodeMirror { border: 1px solid var(--rafael-border); border-radius: 12px; }
+
+/* Login composition: keep real Vue form and settings controls inside the design. */
+#app.login-app .under {
+  position: relative;
+  min-height: 100vh;
+  overflow: auto;
+  padding: 26px 16px;
+  background: #080c18 url('../images/rafael-login-bg-v49.png') center center / cover no-repeat !important;
+}
+#app.login-app .waves-header { display: none !important; }
+#app.login-app .under > .ant-row { position: relative; z-index: 1; min-height: calc(100vh - 52px); }
+#app.login-app #login {
+  position: relative;
+  width: min(506px, calc(100vw - 32px)) !important;
+  max-width: 506px;
+  padding: 0;
+  margin: 20px auto !important;
+  overflow: visible;
+  border: 1px solid transparent;
+  border-radius: 27px;
+  background: linear-gradient(155deg, rgba(24,31,47,.97), rgba(12,17,28,.97)) padding-box,
+    linear-gradient(135deg, rgba(143,83,255,.8), rgba(143,83,255,.18) 48%, rgba(255,176,63,.8)) border-box;
+  box-shadow: 0 24px 80px rgba(0,0,0,.56), 0 0 42px rgba(109,59,225,.15);
+  backdrop-filter: blur(20px);
+}
+#app.login-app .login-card { position: relative; display: flex; min-height: 650px; flex-direction: column; justify-content: center; padding: 50px 38px 38px; }
+#app.login-app .setting-section {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  width: auto;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+#app.login-app .setting-section > div:not(.ant-popover) { display: none; }
+#app.login-app .setting-section .ant-btn { color: #cbd2e1; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.1); }
+#app.login-app .login-brand { display: flex; flex-direction: column; align-items: center; margin: 2px auto 28px; text-align: center; }
+#app.login-app .login-brand-mark { width: 56px; height: 56px; margin-bottom: 10px; border-radius: 18px; font-size: 34px; }
+#app.login-app .login-brand strong { color: #f1f3fa; font-size: 31px; font-weight: 700; letter-spacing: .15px; }
+#app.login-app .login-brand > span:last-child { margin-top: 4px; color: #aab3c5; font-size: 12px; letter-spacing: 1.4px; }
+#app.login-app .headline { display: none; }
+#app.login-app .ant-form-item { margin-bottom: 18px; }
+#app.login-app .ant-input,
+#app.login-app .ant-input-affix-wrapper,
+#app.login-app .ant-input-password { min-height: 54px; color: #e8eaf1; background: rgba(255,255,255,.025); border-color: rgba(137,156,194,.2); border-radius: 12px; }
+#app.login-app .ant-input-affix-wrapper .ant-input { min-height: 50px; background: transparent; }
+#app.login-app .ant-input::placeholder { color: #78839a; }
+#app.login-app .ant-input-prefix,
+#app.login-app .ant-input-password-icon { color: #9aa7bf; }
+#app.login-app .ant-input-affix-wrapper:hover,
+#app.login-app .ant-input-affix-wrapper:focus,
+#app.login-app .ant-input:focus { border-color: rgba(138,93,255,.7); box-shadow: 0 0 0 3px rgba(119,65,238,.12); }
+#app.login-app .ant-btn-primary-login {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 650;
+  background: linear-gradient(105deg, #7d3df0 0%, #5d25d9 100%);
+  box-shadow: 0 10px 26px rgba(99,43,222,.3);
+}
+#app.login-app .ant-btn-primary-login:hover { background: linear-gradient(105deg,#925bff,#703de8); }
+#app.login-app .wave-btn-bg,
+#app.login-app .wave-btn-bg-cl { display: block !important; width: 100% !important; height: auto; background: transparent; box-shadow: none; }
+#app.login-app .wave-btn-bg:before,
+#app.login-app .wave-btn-bg:after,
+#app.login-app .wave-btn-bg-cl:before,
+#app.login-app .wave-btn-bg-cl:after { display: none !important; }
+#app.login-app .login-secure-note { display: flex; align-items: center; gap: 12px; margin-top: 2px; color: #98a2b7; font-size: 11px; justify-content: center; white-space: nowrap; }
+#app.login-app .login-secure-note .anticon { margin-right: 5px; color: #b8c3d7; }
+#app.login-app .login-secure-line { height: 1px; flex: 1 1 auto; background: linear-gradient(90deg, transparent, rgba(152,164,192,.34)); }
+#app.login-app .login-secure-line:last-child { transform: scaleX(-1); }
+#app.login-app .ant-space-vertical { width: 100%; }
+#app.login-app.dark .ant-spin-container:after { background: rgba(13,17,29,.65); }
+
+@media (max-width: 768px) {
+  #app.dark:not(.login-app) #content-layout > .ant-layout-content { padding: 12px 10px 24px; }
+  .rafael-topbar { min-height: 76px; padding: 12px 16px; }
+  .rafael-topbar h1 { font-size: 19px; }
+  .rafael-topbar p, .rafael-secure-pill { display: none; }
+  .rafael-topbar-profile { gap: 0; }
+  #app.login-app .login-card { min-height: 560px; padding: 46px 24px 24px; }
+  #app.login-app .login-brand { margin-bottom: 24px; }
+}
