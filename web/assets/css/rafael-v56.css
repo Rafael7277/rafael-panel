@@ -9,6 +9,11 @@
 #app.inbounds-page .inbound-mobile-link-control { display: flex; min-width: 0; align-items: center; gap: 8px; }
 #app.inbounds-page .inbound-mobile-client-title { justify-content: space-between; margin-bottom: 8px; }
 #app.inbounds-page .inbound-mobile-client-title strong { overflow-wrap: anywhere; }
+#app.inbounds-page .inbound-mobile-client-traffic { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 8px; margin: 8px 0; color: #aab8d0; font-size: 11px; }
+#app.inbounds-page .inbound-mobile-client-traffic strong { min-width: 0; color: #e8edf8; font-weight: 600; text-align: end; overflow-wrap: anywhere; }
+#app.inbounds-page .inbound-mobile-client-traffic .ant-progress { grid-column: 1 / -1; margin: 0; line-height: 1; }
+#app.light.inbounds-page .inbound-mobile-client-traffic { color: #65786e; }
+#app.light.inbounds-page .inbound-mobile-client-traffic strong { color: #2d4036; }
 #app.inbounds-page .inbound-mobile-client-actions { flex-wrap: wrap; }
 #app.inbounds-page .inbound-mobile-link { display: grid; min-width: 0; gap: 5px; margin-top: 9px; }
 #app.inbounds-page .inbound-mobile-link > small { color: #95a4bd; font-size: 10px; }

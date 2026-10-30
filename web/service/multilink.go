@@ -19,33 +19,38 @@ type MultiLinkService struct {
 }
 
 type MultiLinkRow struct {
-	SubID       string   `json:"subId"`
-	ClientCount int      `json:"clientCount"`
-	Emails      []string `json:"emails"`
-	InboundIDs  []int    `json:"inboundIds"`
-	InboundTags []string `json:"inboundTags"`
-	Used        int64    `json:"used"`
-	Total       int64    `json:"total"`
-	Remaining   int64    `json:"remaining"`
-	ExpiryTime  int64    `json:"expiryTime"`
-	Reset       int      `json:"reset"`
-	Enabled     bool     `json:"enabled"`
-	Online      bool     `json:"online"`
-	Finished    bool     `json:"finished"`
-	Status      string   `json:"status"`
-	LastOnline  int64    `json:"lastOnline"`
-	SubURL      string   `json:"subUrl"`
-	UsagePct    float64  `json:"usagePct"`
-	Watching    bool     `json:"watching"`
-	StatusLabel string   `json:"statusLabel"`
+	SubID        string   `json:"subId"`
+	ClientCount  int      `json:"clientCount"`
+	Emails       []string `json:"emails"`
+	InboundIDs   []int    `json:"inboundIds"`
+	InboundTags  []string `json:"inboundTags"`
+	Used         int64    `json:"used"`
+	Total        int64    `json:"total"`
+	NominalTotal int64    `json:"nominalTotal"`
+	QuotaFactor  int64    `json:"quotaFactor"`
+	LimitIP      int      `json:"limitIp"`
+	Remaining    int64    `json:"remaining"`
+	ExpiryTime   int64    `json:"expiryTime"`
+	Reset        int      `json:"reset"`
+	Enabled      bool     `json:"enabled"`
+	Online       bool     `json:"online"`
+	Finished     bool     `json:"finished"`
+	Status       string   `json:"status"`
+	LastOnline   int64    `json:"lastOnline"`
+	SubURL       string   `json:"subUrl"`
+	UsagePct     float64  `json:"usagePct"`
+	Watching     bool     `json:"watching"`
+	StatusLabel  string   `json:"statusLabel"`
 }
 
 type MultiLinkUpdate struct {
-	TotalGB      int64 `json:"totalGB" form:"totalGB"`
-	ExpiryTime   int64 `json:"expiryTime" form:"expiryTime"`
-	Reset        int   `json:"reset" form:"reset"`
-	Enable       bool  `json:"enable" form:"enable"`
-	ResetTraffic bool  `json:"resetTraffic" form:"resetTraffic"`
+	TotalGB      int64  `json:"totalGB" form:"totalGB"`
+	QuotaFactor  *int64 `json:"quotaFactor" form:"quotaFactor"`
+	LimitIP      *int   `json:"limitIp" form:"limitIp"`
+	ExpiryTime   int64  `json:"expiryTime" form:"expiryTime"`
+	Reset        int    `json:"reset" form:"reset"`
+	Enable       bool   `json:"enable" form:"enable"`
+	ResetTraffic bool   `json:"resetTraffic" form:"resetTraffic"`
 }
 
 type multiLinkTarget struct {
@@ -216,6 +221,9 @@ func (s *MultiLinkService) ListByUser(userID *int) ([]*MultiLinkRow, error) {
 		seenInbound := map[int]struct{}{}
 		seenTag := map[string]struct{}{}
 		totalLimit := int64(0)
+		nominalLimit := int64(0)
+		quotaFactor := int64(0)
+		limitIP := 0
 		lastOnline := int64(0)
 		for _, target := range targets {
 			row.ClientCount++
@@ -236,8 +244,22 @@ func (s *MultiLinkService) ListByUser(userID *int) ([]*MultiLinkRow, error) {
 			} else if ts := lastOnlineMap[target.Client.Email]; ts > lastOnline {
 				lastOnline = ts
 			}
-			if target.Client.TotalGB > 0 && target.Client.TotalGB > totalLimit {
-				totalLimit = target.Client.TotalGB
+			effectiveTotal := model.InitialClientTrafficQuota(target.Client)
+			if target.Traffic != nil && target.Traffic.Total > 0 {
+				effectiveTotal = target.Traffic.Total
+			}
+			if effectiveTotal > totalLimit {
+				totalLimit = effectiveTotal
+			}
+			if target.Client.TotalGB > nominalLimit {
+				nominalLimit = target.Client.TotalGB
+				quotaFactor = 0
+				if target.Client.QuotaFactor != nil {
+					quotaFactor = *target.Client.QuotaFactor
+				}
+			}
+			if target.Client.LimitIP > 0 && (limitIP == 0 || target.Client.LimitIP < limitIP) {
+				limitIP = target.Client.LimitIP
 			}
 			if target.Client.ExpiryTime > 0 && (row.ExpiryTime == 0 || target.Client.ExpiryTime < row.ExpiryTime) {
 				row.ExpiryTime = target.Client.ExpiryTime
@@ -254,6 +276,9 @@ func (s *MultiLinkService) ListByUser(userID *int) ([]*MultiLinkRow, error) {
 		}
 		row.ClientCount = len(row.InboundIDs)
 		row.Total = totalLimit
+		row.NominalTotal = nominalLimit
+		row.QuotaFactor = quotaFactor
+		row.LimitIP = limitIP
 		row.LastOnline = lastOnline
 		if row.Total > 0 {
 			row.Remaining = row.Total - row.Used
@@ -352,6 +377,15 @@ func (s *MultiLinkService) UpdateByUser(subID string, update *MultiLinkUpdate, u
 	if update == nil {
 		return false, common.NewError("empty update payload")
 	}
+	if update.TotalGB < 0 {
+		return false, common.NewError("total traffic must be non-negative")
+	}
+	if update.LimitIP != nil && *update.LimitIP < 0 {
+		return false, common.NewError("IP limit must be non-negative")
+	}
+	if !model.ValidateClientQuotaFactor(update.QuotaFactor) {
+		return false, common.NewError(fmt.Sprintf("traffic coefficient must be between 0 and %d", model.MaxClientQuotaFactor))
+	}
 	currentRow, err := s.GetByUser(subID, userID)
 	if err != nil {
 		return false, err
@@ -362,13 +396,19 @@ func (s *MultiLinkService) UpdateByUser(subID string, update *MultiLinkUpdate, u
 	}
 	needRestart := false
 	now := time.Now().UnixMilli()
-	quotaRecovered := update.TotalGB <= 0 || update.TotalGB > currentRow.Used || update.ResetTraffic
+	nextEffectiveQuota := MultiLinkQuotaAfterUpdate(currentRow, update)
+	quotaRecovered := nextEffectiveQuota <= 0 || nextEffectiveQuota > currentRow.Used || update.ResetTraffic
 	expiryRecovered := update.ExpiryTime <= 0 || update.ExpiryTime > now
 	autoEnable := currentRow.Finished && quotaRecovered && expiryRecovered
 	for _, target := range targets {
 		client := target.Client
-		if update.TotalGB >= 0 {
-			client.TotalGB = update.TotalGB
+		client.TotalGB = update.TotalGB
+		if update.QuotaFactor != nil {
+			factor := *update.QuotaFactor
+			client.QuotaFactor = &factor
+		}
+		if update.LimitIP != nil {
+			client.LimitIP = *update.LimitIP
 		}
 		client.ExpiryTime = update.ExpiryTime
 		client.Reset = update.Reset
@@ -392,6 +432,33 @@ func (s *MultiLinkService) UpdateByUser(subID string, update *MultiLinkUpdate, u
 		}
 	}
 	return needRestart, nil
+}
+
+// MultiLinkQuotaAfterUpdate computes the shared effective allowance without
+// mutating a client. Quota edits add only the scaled nominal delta; a reset
+// starts a new cycle at the new nominal allowance divided by its factor.
+func MultiLinkQuotaAfterUpdate(current *MultiLinkRow, update *MultiLinkUpdate) int64 {
+	if current == nil || update == nil || update.TotalGB <= 0 {
+		return 0
+	}
+	oldFactor := current.QuotaFactor
+	oldClient := model.Client{TotalGB: current.NominalTotal}
+	if oldFactor != 0 {
+		oldClient.QuotaFactor = &oldFactor
+	}
+	newClient := model.Client{TotalGB: update.TotalGB}
+	if update.QuotaFactor != nil {
+		newClient.QuotaFactor = update.QuotaFactor
+	} else if oldFactor != 0 {
+		newClient.QuotaFactor = &oldFactor
+	}
+	if update.ResetTraffic {
+		return model.InitialClientTrafficQuota(newClient)
+	}
+	if current.Total <= 0 && current.NominalTotal > 0 {
+		return model.InitialClientTrafficQuota(newClient)
+	}
+	return model.UpdatedClientTrafficQuota(oldClient, newClient, current.Total)
 }
 
 func (s *MultiLinkService) Update(subID string, update *MultiLinkUpdate) (bool, error) {

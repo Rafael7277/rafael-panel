@@ -35,8 +35,9 @@ import (
 // GateLimitEntry is one client's gate limit as consumed by the fork
 // (app/iplimit limitEntry — field names must stay in sync).
 type GateLimitEntry struct {
-	LimitIP  int64 `json:"limitIp"`
-	Disabled bool  `json:"disabled,omitempty"`
+	Identity string `json:"identity,omitempty"`
+	LimitIP  int64  `json:"limitIp"`
+	Disabled bool   `json:"disabled,omitempty"`
 }
 
 // gateLimitsFile is the JSON shape of iplimits.json.
@@ -70,7 +71,32 @@ func (g *ClientLimitGate) RefreshFromDB() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	limits := make(map[string]GateLimitEntry)
+	type policyRecord struct {
+		identity string
+		entry    GateLimitEntry
+	}
+	policiesByEmail := make(map[string][]policyRecord)
+	parent := make(map[string]string)
+	find := func(identity string) string { return identity }
+	find = func(identity string) string {
+		root, ok := parent[identity]
+		if !ok || root == identity {
+			parent[identity] = identity
+			return identity
+		}
+		parent[identity] = find(root)
+		return parent[identity]
+	}
+	union := func(left, right string) {
+		leftRoot, rightRoot := find(left), find(right)
+		if leftRoot == rightRoot {
+			return
+		}
+		if rightRoot < leftRoot {
+			leftRoot, rightRoot = rightRoot, leftRoot
+		}
+		parent[rightRoot] = leftRoot
+	}
 
 	db := database.GetDB()
 	if db == nil {
@@ -106,7 +132,8 @@ func (g *ClientLimitGate) RefreshFromDB() error {
 			return fmt.Errorf("invalid client settings for inbound %d: %w", inbound.Id, err)
 		}
 		for _, client := range settings.Clients {
-			if client.Email == "" {
+			email := strings.ToLower(strings.TrimSpace(client.Email))
+			if email == "" {
 				if client.LimitIP > 0 {
 					return fmt.Errorf("limited client in inbound %d has no email identity", inbound.Id)
 				}
@@ -115,28 +142,60 @@ func (g *ClientLimitGate) RefreshFromDB() error {
 			if client.LimitIP < 0 {
 				return fmt.Errorf("invalid negative IP limit for client %q in inbound %d", client.Email, inbound.Id)
 			}
-			entry := GateLimitEntry{LimitIP: int64(client.LimitIP)}
-			_, trafficDisabled := disabledByTraffic[strings.ToLower(strings.TrimSpace(client.Email))]
+			identity := "email:" + email
+			if subID := strings.TrimSpace(client.SubID); subID != "" {
+				identity = "sub:" + subID
+			}
+			if _, ok := parent[identity]; !ok {
+				parent[identity] = identity
+			}
+			entry := GateLimitEntry{Identity: identity, LimitIP: int64(client.LimitIP)}
+			_, trafficDisabled := disabledByTraffic[email]
 			if !client.Enable || !inbound.Enable || trafficDisabled {
 				entry.Disabled = true
 			}
-			// Same email in two inbounds: enabled entries win over disabled
-			// entries, and among enabled entries the strictest positive limit wins.
-			if prev, ok := limits[client.Email]; ok {
-				switch {
-				case !prev.Disabled && entry.Disabled:
-					continue
-				case prev.Disabled && !entry.Disabled:
-					// replace disabled with enabled entry
-				case !prev.Disabled && !entry.Disabled && prev.LimitIP > 0 &&
-					(entry.LimitIP == 0 || prev.LimitIP <= entry.LimitIP):
-					continue
-				case !prev.Disabled && !entry.Disabled && entry.LimitIP == 0 && prev.LimitIP == 0:
-					continue
-				}
+			// A repeated email connects otherwise separate SubID groups. Merge
+			// those groups so the Xray user cannot select an alias to get a
+			// separate device allowance.
+			if prior := policiesByEmail[email]; len(prior) > 0 {
+				union(prior[0].identity, identity)
 			}
-			limits[client.Email] = entry
+			policiesByEmail[email] = append(policiesByEmail[email], policyRecord{identity: identity, entry: entry})
 		}
+	}
+
+	// Resolve each email's enabled/disabled state and apply one strictest
+	// positive IP cap to all aliases in a shared SubID component. Unlimited
+	// aliases do not weaken a configured cap on another inbound.
+	groupLimit := make(map[string]int64)
+	for _, records := range policiesByEmail {
+		for _, record := range records {
+			if record.entry.Disabled || record.entry.LimitIP <= 0 {
+				continue
+			}
+			root := find(record.identity)
+			if current := groupLimit[root]; current == 0 || record.entry.LimitIP < current {
+				groupLimit[root] = record.entry.LimitIP
+			}
+		}
+	}
+	limits := make(map[string]GateLimitEntry, len(policiesByEmail))
+	for email, records := range policiesByEmail {
+		selected := records[0].entry
+		for _, record := range records[1:] {
+			if selected.Disabled && !record.entry.Disabled {
+				selected = record.entry
+				continue
+			}
+			if !selected.Disabled && !record.entry.Disabled && record.entry.LimitIP > 0 &&
+				(selected.LimitIP <= 0 || record.entry.LimitIP < selected.LimitIP) {
+				selected = record.entry
+			}
+		}
+		root := find(records[0].identity)
+		selected.Identity = root
+		selected.LimitIP = groupLimit[root]
+		limits[email] = selected
 	}
 
 	data, err := json.MarshalIndent(gateLimitsFile{Strict: true, Limits: limits}, "", "  ")

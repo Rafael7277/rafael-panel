@@ -571,7 +571,7 @@ func TestUpdateAndDeleteClientStat_MatchEmailCaseInsensitive(t *testing.T) {
 	}
 
 	svc := &InboundService{}
-	if err := svc.UpdateClientStat(db, "user@example.com", &model.Client{
+	if err := svc.UpdateClientStat(db, "user@example.com", &model.Client{TotalGB: 1}, &model.Client{
 		Email: "user@example.com", Enable: true, TotalGB: 5,
 	}); err != nil {
 		t.Fatalf("UpdateClientStat: %v", err)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v2/database"
 	"github.com/mhsanaei/3x-ui/v2/database/model"
@@ -95,10 +96,13 @@ func RemoveIndex(s []any, index int) []any {
 
 // GetXrayConfig retrieves and builds the Xray configuration from settings and inbounds.
 func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
+	phaseStart := time.Now()
+	logger.Info("Xray startup: loading configuration template")
 	templateConfig, err := s.settingService.GetXrayConfigTemplate()
 	if err != nil {
 		return nil, err
 	}
+	logger.Infof("Xray startup: configuration template loaded in %s", time.Since(phaseStart))
 
 	xrayConfig := &xray.Config{}
 	err = json.Unmarshal([]byte(templateConfig), xrayConfig)
@@ -114,12 +118,20 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		}
 	}
 
-	s.inboundService.AddTraffic(nil, nil)
+	phaseStart = time.Now()
+	logger.Info("Xray startup: reconciling traffic and client state")
+	if trafficErr, _ := s.inboundService.AddTraffic(nil, nil); trafficErr != nil {
+		logger.Warning("Xray startup: traffic reconciliation failed:", trafficErr)
+	}
+	logger.Infof("Xray startup: traffic and client state reconciled in %s", time.Since(phaseStart))
 
+	phaseStart = time.Now()
+	logger.Info("Xray startup: loading inbounds")
 	inbounds, err := s.inboundService.GetAllInbounds()
 	if err != nil {
 		return nil, err
 	}
+	logger.Infof("Xray startup: loaded %d inbounds in %s", len(inbounds), time.Since(phaseStart))
 	for _, inbound := range inbounds {
 		if !inbound.Enable {
 			continue
@@ -242,20 +254,26 @@ func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xray.ClientTraffic, 
 
 // RestartXray restarts the Xray process, optionally forcing a restart even if config unchanged.
 func (s *XrayService) RestartXray(isForce bool) error {
+	phaseStart := time.Now()
+	logger.Info("Xray startup: refreshing IP-limit policy")
 	if err := clientLimitGate.RefreshFromDB(); err != nil {
 		policyErr := fmt.Errorf("prepare IP limit policy before Xray start: %w", err)
 		failClosedXrayForIPLimit(policyErr)
 		return policyErr
 	}
+	logger.Infof("Xray startup: IP-limit policy refreshed in %s", time.Since(phaseStart))
 	lock.Lock()
 	defer lock.Unlock()
 	logger.Debug("restart Xray, force:", isForce)
 	isManuallyStopped.Store(false)
 
+	phaseStart = time.Now()
+	logger.Info("Xray startup: building Xray configuration")
 	xrayConfig, err := s.GetXrayConfig()
 	if err != nil {
 		return err
 	}
+	logger.Infof("Xray startup: Xray configuration built in %s", time.Since(phaseStart))
 
 	if s.IsXrayRunning() {
 		if !isForce && p.GetConfig().Equals(xrayConfig) && !isNeedXrayRestart.Load() {
@@ -267,10 +285,13 @@ func (s *XrayService) RestartXray(isForce bool) error {
 
 	p = xray.NewProcess(xrayConfig)
 	result = ""
+	phaseStart = time.Now()
+	logger.Info("Xray startup: launching Xray core")
 	err = p.Start()
 	if err != nil {
 		return err
 	}
+	logger.Infof("Xray startup: Xray core launch returned in %s", time.Since(phaseStart))
 
 	return nil
 }

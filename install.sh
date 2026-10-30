@@ -40,7 +40,7 @@ resolve_release_url() {
         return
     fi
     [[ "${VERSION}" =~ ^v[0-9]+([.][0-9]+)*([.-][A-Za-z0-9._-]+)?$ ]] || \
-        fail "Use 'latest' or a release tag such as v59."
+        fail "Use 'latest' or a release tag such as v63."
     printf '%s/download/%s/%s\n' "${release_base}" "${VERSION}" "${RELEASE_ASSET}"
 }
 

@@ -3,7 +3,7 @@
 //
 // The panel writes a JSON limits file (path passed via the XRAY_IPLIMIT_FILE
 // environment variable to the Xray child process) describing, per client
-// email, the maximum number of simultaneous distinct source IPs. The gate is
+// email and logical group, the maximum number of simultaneous distinct source IPs. The gate is
 // consulted from DefaultDispatcher.routedDispatch — the single convergence
 // point of all proxy protocols, where session.Inbound.User and
 // session.Inbound.Source are already populated and no user byte has been
@@ -19,7 +19,7 @@
 //   - Counting is connection-synchronous: Check is called before dispatch,
 //     and the returned release callback runs when the authenticated context
 //     ends — no access-log delay.
-//   - One (email, source IP) pair holds a slot while it has live connections.
+//   - One (logical identity, source IP) pair holds a slot while it has live connections.
 //     Multiple flows from that IP share the slot; a different IP is rejected
 //     immediately when the limit is full.
 //   - The whole package is additive (upstream files untouched except the
@@ -30,6 +30,7 @@ package iplimit
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -41,8 +42,9 @@ const defaultTTL = 60 * time.Second
 
 // limitEntry is one client's limit as written by the panel.
 type limitEntry struct {
-	LimitIP  int64 `json:"limitIp"`
-	Disabled bool  `json:"disabled,omitempty"`
+	Identity string `json:"identity,omitempty"`
+	LimitIP  int64  `json:"limitIp"`
+	Disabled bool   `json:"disabled,omitempty"`
 }
 
 // limitsFile is the JSON shape of the limits file.
@@ -51,7 +53,7 @@ type limitsFile struct {
 	Limits map[string]limitEntry `json:"limits"`
 }
 
-// slot is one active (email, ip) reservation.
+// slot is one active (logical identity, ip) reservation.
 type slot struct {
 	lastActive time.Time
 	// conns counts live connections currently holding this slot. The slot
@@ -66,9 +68,10 @@ type Tracker struct {
 	// reloadMu serializes file reads so two concurrent first connections cannot
 	// publish snapshots out of order while the panel atomically replaces it.
 	reloadMu sync.Mutex
-	// limits maps email -> configured limit. nil entries mean "no limit".
+	// limits maps normalized email -> configured policy. nil entries mean "no limit".
 	limits map[string]limitEntry
-	// active maps email -> (ip -> slot).
+	// active maps a logical client identity -> (ip -> slot). Policies for
+	// every alias in a multi-link group point at the same identity.
 	active map[string]map[string]*slot
 
 	filePath string
@@ -173,11 +176,28 @@ func (t *Tracker) reload(fromWatcher bool) {
 		t.markUnavailable()
 		return // panel-managed snapshots must be explicitly strict and complete
 	}
+	normalizedLimits := make(map[string]limitEntry, len(lf.Limits))
 	for email, entry := range lf.Limits {
-		if email == "" || entry.LimitIP < 0 {
+		policyEmail := strings.ToLower(strings.TrimSpace(email))
+		if policyEmail == "" || entry.LimitIP < 0 {
 			t.markUnavailable()
 			return // invalid entries must not turn into an unlimited bypass
 		}
+		if strings.TrimSpace(entry.Identity) == "" {
+			entry.Identity = policyEmail
+		}
+		if previous, ok := normalizedLimits[policyEmail]; ok {
+			if previous.Disabled && !entry.Disabled {
+				normalizedLimits[policyEmail] = entry
+				continue
+			}
+			if !previous.Disabled && !entry.Disabled && entry.LimitIP > 0 &&
+				(previous.LimitIP <= 0 || entry.LimitIP < previous.LimitIP) {
+				normalizedLimits[policyEmail] = entry
+			}
+			continue
+		}
+		normalizedLimits[policyEmail] = entry
 	}
 	after, err := os.Stat(t.filePath)
 	if err != nil || before.Size() != int64(len(data)) || after.Size() != int64(len(data)) ||
@@ -190,10 +210,7 @@ func (t *Tracker) reload(fromWatcher bool) {
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.limits = lf.Limits
-	if t.limits == nil {
-		t.limits = make(map[string]limitEntry)
-	}
+	t.limits = normalizedLimits
 	t.strict = lf.Strict
 	t.loaded = true
 	t.fileMod = after.ModTime()
@@ -223,7 +240,8 @@ func (t *Tracker) markUnavailable() {
 //  6. active distinct IPs < limit                    -> allow
 //  7. otherwise                                      -> REJECT
 func (t *Tracker) Check(email, ip string, now time.Time) (allowed bool, release func()) {
-	if email == "" {
+	policyEmail := strings.ToLower(strings.TrimSpace(email))
+	if policyEmail == "" {
 		return true, func() {}
 	}
 	// Apply a panel policy update before deciding this connection. The
@@ -236,7 +254,7 @@ func (t *Tracker) Check(email, ip string, now time.Time) (allowed bool, release 
 		return false, nil // policy path is configured but no valid snapshot exists
 	}
 
-	entry, ok := t.limits[email]
+	entry, ok := t.limits[policyEmail]
 	if !ok {
 		if t.strict {
 			return false, nil // do not let an unlisted panel user bypass policy
@@ -256,18 +274,22 @@ func (t *Tracker) Check(email, ip string, now time.Time) (allowed bool, release 
 	// Reclaim only this client's expired slots on the connection path. A
 	// process-wide sweep runs periodically in the background so admission
 	// cost does not grow with every other client's retained IP history.
-	t.gcEmailLocked(email, now)
+	identity := strings.TrimSpace(entry.Identity)
+	if identity == "" {
+		identity = policyEmail
+	}
+	t.gcIdentityLocked(identity, now)
 
-	slots := t.active[email]
+	slots := t.active[identity]
 	if slots == nil {
 		slots = make(map[string]*slot)
-		t.active[email] = slots
+		t.active[identity] = slots
 	}
 
 	if s, ok := slots[ip]; ok && s.conns > 0 {
 		s.conns++
 		s.lastActive = now
-		return true, t.releaseFunc(email, ip)
+		return true, t.releaseFunc(identity, ip)
 	}
 	// Count distinct IPs currently holding at least one live connection.
 	liveDistinct := 0
@@ -283,15 +305,15 @@ func (t *Tracker) Check(email, ip string, now time.Time) (allowed bool, release 
 	// An idle slot may still be retained for the TTL, but it no longer owns
 	// a seat. Reconnecting from it must pass the same limit check as a new IP.
 	slots[ip] = &slot{conns: 1, lastActive: now}
-	return true, t.releaseFunc(email, ip)
+	return true, t.releaseFunc(identity, ip)
 }
 
-// releaseFunc builds the release closure for an acquired slot.
-func (t *Tracker) releaseFunc(email, ip string) func() {
+// releaseFunc builds the release closure for an acquired logical-client slot.
+func (t *Tracker) releaseFunc(identity, ip string) func() {
 	return func() {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-		slots := t.active[email]
+		slots := t.active[identity]
 		if slots == nil {
 			return
 		}
@@ -313,16 +335,16 @@ func (t *Tracker) releaseFunc(email, ip string) func() {
 // gcLocked drops slots whose TTL expired and that hold no live connection.
 // Called with t.mu held.
 func (t *Tracker) gcLocked(now time.Time) {
-	for email := range t.active {
-		t.gcEmailLocked(email, now)
+	for identity := range t.active {
+		t.gcIdentityLocked(identity, now)
 	}
 }
 
-// gcEmailLocked drops expired, connection-free slots for one email. Called
+// gcIdentityLocked drops expired, connection-free slots for one identity. Called
 // with t.mu held from Check so admission work is proportional to this client's
 // recent IPs rather than all clients' retained IPs.
-func (t *Tracker) gcEmailLocked(email string, now time.Time) {
-	slots := t.active[email]
+func (t *Tracker) gcIdentityLocked(identity string, now time.Time) {
+	slots := t.active[identity]
 	if slots == nil {
 		return
 	}
@@ -333,7 +355,7 @@ func (t *Tracker) gcEmailLocked(email string, now time.Time) {
 		}
 	}
 	if len(slots) == 0 {
-		delete(t.active, email)
+		delete(t.active, identity)
 	}
 }
 
@@ -353,6 +375,7 @@ func (t *Tracker) ttlLocked() time.Duration {
 // Snapshot returns a copy of the current state (for tests and diagnostics).
 type EntrySnapshot struct {
 	Email      string
+	Identity   string
 	IP         string
 	Conns      int
 	LastActive time.Time
@@ -362,10 +385,10 @@ func (t *Tracker) Snapshot() []EntrySnapshot {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	out := make([]EntrySnapshot, 0, 16)
-	for email, slots := range t.active {
+	for identity, slots := range t.active {
 		for ip, s := range slots {
 			out = append(out, EntrySnapshot{
-				Email: email, IP: ip, Conns: s.conns, LastActive: s.lastActive,
+				Email: identity, Identity: identity, IP: ip, Conns: s.conns, LastActive: s.lastActive,
 			})
 		}
 	}

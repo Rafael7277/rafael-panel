@@ -188,8 +188,22 @@
           <a-form-model-item label="Total Traffic (GB)">
             <a-input-number v-model="editing.totalGB" :min="loginIsAdmin ? 0 : 0.1" :step="0.1" style="width:100%;"></a-input-number>
             <div style="margin-top: 6px; opacity: .72; font-size: 12px;">
-              [[ loginIsAdmin ? 'Leave empty or zero for unlimited traffic.' : 'Resellers must assign a finite traffic amount.' ]]
+              [[ loginIsAdmin ? 'The coefficient applies to added quota and resets. Leave zero for unlimited traffic.' : 'Resellers must assign a finite traffic amount. The coefficient applies to added quota and resets.' ]]
             </div>
+          </a-form-model-item>
+          <a-form-model-item label="Traffic Coefficient">
+            <a-input-number v-model.number="editing.quotaFactor" :min="0" :max="10000" :step="1" style="width:100%;"></a-input-number>
+            <div style="margin-top: 6px; opacity: .72; font-size: 12px;">Zero means 1:1. Existing allowance is preserved when only this value changes.</div>
+          </a-form-model-item>
+          <a-form-model-item label="IP Limit">
+            <a-switch v-model="editing.limitIpEnabled">
+              <span slot="checkedChildren">ON</span>
+              <span slot="unCheckedChildren">OFF</span>
+            </a-switch>
+          </a-form-model-item>
+          <a-form-model-item v-if="editing.limitIpEnabled" label="Maximum IPs">
+            <a-input-number v-model.number="editing.limitIp" :min="1" :step="1" style="width:100%;"></a-input-number>
+            <div style="margin-top: 6px; opacity: .72; font-size: 12px;">Linked clients share this limit when they use the same Xray process.</div>
           </a-form-model-item>
           <a-form-model-item label="Expire Time">
             <a-date-picker
@@ -275,6 +289,9 @@
       editing: {
         subId: '',
         totalGB: null,
+        quotaFactor: 0,
+        limitIp: 0,
+        limitIpEnabled: false,
         expiryMoment: null,
         reset: 0,
         enable: true,
@@ -331,6 +348,11 @@
     watch: {
       autoRefreshEnabled() {
         this.syncAutoRefresh();
+      },
+      'editing.limitIpEnabled'(enabled) {
+        if (enabled && Number(this.editing.limitIp) <= 0) {
+          this.editing.limitIp = 1;
+        }
       },
       'launcher.primaryInboundId'(value) {
         if (!value) return;
@@ -573,7 +595,10 @@
       openEdit(row) {
         this.editing = {
           subId: row.subId,
-          totalGB: row.total > 0 ? Number((row.total / SizeFormatter.ONE_GB).toFixed(1)) : null,
+          totalGB: (row.nominalTotal || row.total) > 0 ? Number(((row.nominalTotal || row.total) / SizeFormatter.ONE_GB).toFixed(1)) : null,
+          quotaFactor: Number(row.quotaFactor || 0),
+          limitIp: Number(row.limitIp || 0),
+          limitIpEnabled: Number(row.limitIp || 0) > 0,
           expiryMoment: row.expiryTime > 0 ? moment(row.expiryTime) : null,
           reset: row.reset || 0,
           enable: row.enabled || row.finished,
@@ -595,6 +620,8 @@
         }
         const payload = {
           totalGB: hasFiniteTotal ? Math.max(0, Math.round(Number(rawTotal) * SizeFormatter.ONE_GB)) : 0,
+          quotaFactor: Math.max(0, Math.min(10000, Math.round(Number(this.editing.quotaFactor || 0)))),
+          limitIp: this.editing.limitIpEnabled ? Math.max(1, Math.round(Number(this.editing.limitIp || 1))) : 0,
           expiryTime: this.editing.expiryMoment ? this.editing.expiryMoment.valueOf() : 0,
           reset: this.editing.reset || 0,
           enable: this.editing.enable,

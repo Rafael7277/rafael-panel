@@ -212,6 +212,7 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.Use(middleware.PerformanceMiddleware(basePath))
 	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 	assetsBasePath := basePath + "assets/"
 
@@ -461,8 +462,10 @@ func (s *Server) startTask() {
 	// Check whether xray is running every second
 	s.cron.AddJob("@every 1s", job.NewCheckXrayRunningJob())
 
-	// Check if xray needs to be restarted every 30 seconds
-	s.cron.AddFunc("@every 30s", func() {
+	// Apply requested Xray changes promptly. In particular, a quota poll removes
+	// an exhausted client first and requests a restart so existing sessions are
+	// dropped; a 30-second restart interval allowed avoidable quota overshoot.
+	s.cron.AddFunc("@every 1s", func() {
 		if s.xrayService.IsNeedRestartAndSetFalse() {
 			err := s.xrayService.RestartXray(false)
 			if err != nil {
@@ -473,8 +476,10 @@ func (s *Server) startTask() {
 
 	go func() {
 		time.Sleep(time.Second * 5)
-		// Statistics every 10 seconds, start the delay for 5 seconds for the first time, and staggered with the time to restart xray
-		s.cron.AddJob("@every 10s", job.NewXrayTrafficJob())
+		// Sample traffic every 2 seconds so quota exhaustion is enforced with a
+		// shorter polling delay. Expensive reseller sync and full WebSocket
+		// snapshots stay throttled inside the job to 10 seconds.
+		s.cron.AddJob("@every 2s", job.NewXrayTrafficJob())
 	}()
 
 	// Recent client IP observations for the UI. Production admission and

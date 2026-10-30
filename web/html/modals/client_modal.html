@@ -25,6 +25,7 @@
         clients: [],
         clientStats: [],
         oldClientId: "",
+        quotaFactor: 0,
         index: null,
         clientIps: null,
         delayedStart: false,
@@ -32,6 +33,15 @@
         selectedInboundIds: [],
         ok() {
             const currentClient = clientModalApp.client;
+            const quotaFactor = Number(clientModal.quotaFactor);
+            if (!Number.isFinite(quotaFactor) || quotaFactor < 0 || quotaFactor > 10000) {
+                clientModalApp.$message.error('Traffic coefficient must be between 0 and 10000.');
+                return;
+            }
+            // Keep the modal value as the source of truth. Some Vue 2 form
+            // controls do not reliably emit updates for properties on class
+            // instances, which caused edited coefficients to be omitted.
+            if (currentClient) currentClient.quotaFactor = Math.round(quotaFactor);
             if (!loginIsAdmin && currentClient && Number(currentClient._totalGB || 0) <= 0) {
                 clientModalApp.$message.error('Resellers must assign a finite traffic amount of at least 0.1 GB.');
                 return;
@@ -64,13 +74,34 @@
                 if (this.clients[index].expiryTime < 0) {
                     this.delayedStart = true;
                 }
-                this.oldClientId = this.getClientId(dbInbound.protocol, clients[index]);
+                this.oldClientId = this.getClientId(dbInbound.protocol, this.clients[index]);
             } else {
                 this.addClient(this.inbound, this.clients);
             }
+            this.quotaFactor = this.getStoredQuotaFactor(dbInbound, this.clients[this.index], this.index);
             this.clientStats = this.dbInbound.clientStats.find(row => row.email === this.clients[this.index].email);
             this.confirm = confirm;
         },  
+        getStoredQuotaFactor(dbInbound, client, index) {
+            // Prefer the exact client entry from the server's stored settings.
+            // This avoids displaying the class-model default (0) if a client
+            // was reconstructed without its custom quota field.
+            try {
+                const settings = typeof dbInbound.settings === 'string'
+                    ? JSON.parse(dbInbound.settings || '{}')
+                    : dbInbound.settings;
+                const rawClients = settings && Array.isArray(settings.clients) ? settings.clients : [];
+                const rawClient = rawClients[index];
+                if (rawClient && client && String(rawClient.email || '').toLowerCase() === String(client.email || '').toLowerCase()) {
+                    const storedFactor = Number(rawClient.quotaFactor);
+                    if (Number.isFinite(storedFactor) && storedFactor >= 0) return storedFactor;
+                }
+            } catch (e) {
+                console.warn('Unable to read stored client traffic coefficient:', e);
+            }
+            const clientFactor = Number(client && client.quotaFactor);
+            return Number.isFinite(clientFactor) && clientFactor >= 0 ? clientFactor : 0;
+        },
         getClientId(protocol, client) {
             switch (protocol) {
                 case Protocols.TROJAN: return client.password;
@@ -139,6 +170,7 @@
                     this.clientModal.clients = this.clientModal.inbound.clients;
                     this.clientModal.index = this.clientModal.clients.length;
                     this.clientModal.addClient(this.clientModal.inbound, this.clientModal.clients);
+                    this.clientModal.quotaFactor = Number(this.clientModal.clients[this.clientModal.index]?.quotaFactor || 0);
                 }
             },
             get isEdit() {

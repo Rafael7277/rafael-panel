@@ -165,10 +165,12 @@ func (a *MultiLinkController) update(c *gin.Context) {
 			return
 		}
 		currentReserved := remainingAssignedQuota(currentRow.Total, currentRow.Used)
-		nextReserved := form.TotalGB
-		if !form.ResetTraffic {
-			nextReserved = remainingAssignedQuota(form.TotalGB, currentRow.Used)
+		nextQuota := service.MultiLinkQuotaAfterUpdate(currentRow, form)
+		nextUsed := currentRow.Used
+		if form.ResetTraffic {
+			nextUsed = 0
 		}
+		nextReserved := remainingAssignedQuota(nextQuota, nextUsed)
 		nextAssigned := currentAssigned - currentReserved + nextReserved
 		if user.MaxTraffic > 0 && nextAssigned > user.MaxTraffic {
 			jsonMsg(c, "Reseller assigned traffic quota exceeded", fmt.Errorf("max traffic exceeded"))

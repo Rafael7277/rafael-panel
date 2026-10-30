@@ -6,7 +6,7 @@ on:
     branches:
       - main
     tags:
-      - "v59"
+      - "v63"
 
 permissions:
   contents: read
@@ -35,106 +35,84 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build-v59/rafael/bin
+          mkdir -p build-v63/rafael/bin
           export CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-          go build -mod=mod -trimpath -ldflags "-s -w" -o build-v59/rafael/rafael-panel .
+          go build -mod=mod -trimpath -ldflags "-s -w" -o build-v63/rafael/rafael-panel .
 
           cp bootstrap.sh install-local.sh rafael.sh rafael.service.debian \
             rafael-updater.sh rafael-launcher.sh LICENSE NOTICE \
-            README-v59.md RELEASE_NOTES_v59.md BUILD_V59_CHECKLIST.md \
-            xray-fork-version.txt build-v59/rafael/
-          cp third_party/xray-core/LICENSE build-v59/rafael/LICENSE-XRAY-MPL-2.0
-          cp third_party/xray-core/LICENSE build-v59/LICENSE-XRAY-MPL-2.0
+            README-v63.md RELEASE_NOTES_v63.md BUILD_V63_CHECKLIST.md \
+            xray-fork-version.txt build-v63/rafael/
+          cp third_party/xray-core/LICENSE build-v63/rafael/LICENSE-XRAY-MPL-2.0
+          cp third_party/xray-core/LICENSE build-v63/LICENSE-XRAY-MPL-2.0
 
-          updater_hash="$(sha256sum build-v59/rafael/rafael-updater.sh | awk '{print $1}')"
-          test "$(grep -c 'BOOTSTRAP_UPDATER_SHA256=""' build-v59/rafael/rafael.sh)" = "1"
+          updater_hash="$(sha256sum build-v63/rafael/rafael-updater.sh | awk '{print $1}')"
+          test "$(grep -c 'BOOTSTRAP_UPDATER_SHA256=""' build-v63/rafael/rafael.sh)" = "1"
           sed -i "s/BOOTSTRAP_UPDATER_SHA256=\"\"/BOOTSTRAP_UPDATER_SHA256=\"${updater_hash}\"/" \
-            build-v59/rafael/rafael.sh
+            build-v63/rafael/rafael.sh
 
           source_pin="$(sed -n 's/^source_sha256=//p' xray-fork-version.txt)"
           fork_commit="$(sed -n 's/^fork_base_commit=//p' xray-fork-version.txt)"
-          xray_repo="$(sed -n 's/^release_repo=//p' xray-fork-version.txt)"
-          xray_tag="$(sed -n 's/^release_tag=//p' xray-fork-version.txt)"
-          xray_binary_pin="$(sed -n 's/^release_binary_sha256=//p' xray-fork-version.txt)"
-          xray_source_pin="$(sed -n 's/^release_source_sha256=//p' xray-fork-version.txt)"
           [[ "${source_pin}" =~ ^[0-9a-f]{64}$ ]]
           [[ "${fork_commit}" =~ ^[0-9a-f]{40}$ ]]
-          [[ "${xray_repo}" == "Rafael7277/rafael-xray-core" ]]
-          [[ -n "${xray_tag}" ]]
-          [[ "${xray_binary_pin}" =~ ^[0-9a-f]{64}$ ]]
-          [[ "${xray_source_pin}" =~ ^[0-9a-f]{64}$ ]]
           [[ -f third_party/xray-core/app/iplimit/tracker.go ]]
           grep -Fq 'RAFAEL:IPLIMIT' third_party/xray-core/app/dispatcher/default.go
-          : > build-v59/xray-source.manifest
+          : > build-v63/xray-source.manifest
           while IFS= read -r -d '' file; do
             relative="${file#third_party/xray-core/}"
             printf '%s  %s\n' "${relative}" "$(sha256sum "${file}" | cut -d' ' -f1)" \
-              >> build-v59/xray-source.manifest
+              >> build-v63/xray-source.manifest
           done < <(find third_party/xray-core -type f ! -path '*/.git/*' -print0 | LC_ALL=C sort -z)
-          actual_source_pin="$(sha256sum build-v59/xray-source.manifest | awk '{print $1}')"
+          actual_source_pin="$(sha256sum build-v63/xray-source.manifest | awk '{print $1}')"
           test "${actual_source_pin}" = "${source_pin}"
 
-          release_base="https://github.com/${xray_repo}/releases/download/${xray_tag}"
-          curl -fL --retry 3 "${release_base}/rafael-xray-linux-amd64" \
-            -o build-v59/rafael-xray-linux-amd64
-          curl -fL --retry 3 "${release_base}/rafael-xray-core-source.tar.gz" \
-            -o build-v59/rafael-xray-core-source.tar.gz
-          curl -fL --retry 3 "${release_base}/xray-fork-version.txt" \
-            -o build-v59/xray-fork-version.release.txt
-          release_source_pin="$(sed -n 's/^source_sha256=//p' build-v59/xray-fork-version.release.txt)"
-          release_fork_commit="$(sed -n 's/^fork_base_commit=//p' build-v59/xray-fork-version.release.txt)"
-          release_tag="$(sed -n 's/^release_tag=//p' build-v59/xray-fork-version.release.txt)"
-          test "${release_source_pin}" = "${source_pin}"
-          test "${release_fork_commit}" = "${fork_commit}"
-          test "${release_tag}" = "${xray_tag}"
-          printf '%s  %s\n' "${xray_binary_pin}" "build-v59/rafael-xray-linux-amd64" \
-            | sha256sum --check --strict
-          printf '%s  %s\n' "${xray_source_pin}" "build-v59/rafael-xray-core-source.tar.gz" \
-            | sha256sum --check --strict
-          chmod 755 build-v59/rafael-xray-linux-amd64
-          install -m 755 build-v59/rafael-xray-linux-amd64 \
-            build-v59/rafael/bin/xray-linux-amd64
-          (cd build-v59 && sha256sum rafael-xray-core-source.tar.gz \
+          xray_build_id="rafael-iplimit-${fork_commit:0:7}-${source_pin:0:12}"
+          (cd third_party/xray-core && go build -trimpath -buildvcs=false \
+            -ldflags "-s -w -X github.com/xtls/xray-core/core.build=${xray_build_id}" \
+            -o ../../build-v63/rafael/bin/xray-linux-amd64 ./main)
+          install -m 755 build-v63/rafael/bin/xray-linux-amd64 build-v63/rafael-xray-linux-amd64
+          tar -czf build-v63/rafael-xray-core-source.tar.gz -C third_party xray-core
+          (cd build-v63 && sha256sum rafael-xray-core-source.tar.gz \
             > rafael-xray-core-source.tar.gz.sha256)
-          (cd build-v59 && sha256sum rafael-xray-linux-amd64 > rafael-xray-linux-amd64.sha256)
+          (cd build-v63 && sha256sum rafael-xray-linux-amd64 > rafael-xray-linux-amd64.sha256)
           curl -fL --retry 3 \
             https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat \
-            -o build-v59/rafael/bin/geoip.dat
+            -o build-v63/rafael/bin/geoip.dat
           curl -fL --retry 3 \
             https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat \
-            -o build-v59/rafael/bin/geosite.dat
-          marker="$(sed -n 's/^CLI_BUILD_VERSION="\([^"]*\)"$/\1/p' build-v59/rafael/rafael.sh)"
-          test "${marker}" = "v59"
+            -o build-v63/rafael/bin/geosite.dat
+          marker="$(sed -n 's/^CLI_BUILD_VERSION="\([^"]*\)"$/\1/p' build-v63/rafael/rafael.sh)"
+          test "${marker}" = "v63"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             test "${GITHUB_REF_NAME}" = "${marker}"
           else
             test "${GITHUB_REF_TYPE}" == "branch"
           fi
-          grep -Fq "BOOTSTRAP_UPDATER_SHA256=\"${updater_hash}\"" build-v59/rafael/rafael.sh
-          tar -czf build-v59/rafael-linux-amd64.tar.gz -C build-v59 rafael
-          tar -tzf build-v59/rafael-linux-amd64.tar.gz > build-v59/panel-package.files
-          grep -Fxq rafael/install-local.sh build-v59/panel-package.files
-          grep -Fxq rafael/LICENSE build-v59/panel-package.files
-          grep -Fxq rafael/LICENSE-XRAY-MPL-2.0 build-v59/panel-package.files
-          grep -Fxq rafael/NOTICE build-v59/panel-package.files
-          grep -Fxq rafael/bin/xray-linux-amd64 build-v59/panel-package.files
-          grep -Fxq rafael/xray-fork-version.txt build-v59/panel-package.files
-          tar -tzf build-v59/rafael-xray-core-source.tar.gz > build-v59/xray-source.files
-          grep -Eq '^\./app/iplimit/tracker\.go$' build-v59/xray-source.files
-          grep -Eq '^\./LICENSE$' build-v59/xray-source.files
-          (cd build-v59 && sha256sum rafael-linux-amd64.tar.gz > rafael-linux-amd64.tar.gz.sha256)
+          grep -Fq "BOOTSTRAP_UPDATER_SHA256=\"${updater_hash}\"" build-v63/rafael/rafael.sh
+          tar -czf build-v63/rafael-linux-amd64.tar.gz -C build-v63 rafael
+          tar -tzf build-v63/rafael-linux-amd64.tar.gz > build-v63/panel-package.files
+          grep -Fxq rafael/install-local.sh build-v63/panel-package.files
+          grep -Fxq rafael/LICENSE build-v63/panel-package.files
+          grep -Fxq rafael/LICENSE-XRAY-MPL-2.0 build-v63/panel-package.files
+          grep -Fxq rafael/NOTICE build-v63/panel-package.files
+          grep -Fxq rafael/bin/xray-linux-amd64 build-v63/panel-package.files
+          grep -Fxq rafael/xray-fork-version.txt build-v63/panel-package.files
+          tar -tzf build-v63/rafael-xray-core-source.tar.gz > build-v63/xray-source.files
+          grep -Fxq 'xray-core/app/iplimit/tracker.go' build-v63/xray-source.files
+          grep -Fxq 'xray-core/LICENSE' build-v63/xray-source.files
+          (cd build-v63 && sha256sum rafael-linux-amd64.tar.gz > rafael-linux-amd64.tar.gz.sha256)
 
       - name: Upload commit package artifact
         uses: actions/upload-artifact@v4
         with:
           name: rafael-linux-amd64-${{ github.ref_name }}
           path: |
-            build-v59/rafael-linux-amd64.tar.gz
-            build-v59/rafael-linux-amd64.tar.gz.sha256
-            build-v59/rafael-xray-linux-amd64
-            build-v59/rafael-xray-linux-amd64.sha256
-            build-v59/rafael-xray-core-source.tar.gz
-            build-v59/rafael-xray-core-source.tar.gz.sha256
+            build-v63/rafael-linux-amd64.tar.gz
+            build-v63/rafael-linux-amd64.tar.gz.sha256
+            build-v63/rafael-xray-linux-amd64
+            build-v63/rafael-xray-linux-amd64.sha256
+            build-v63/rafael-xray-core-source.tar.gz
+            build-v63/rafael-xray-core-source.tar.gz.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -143,18 +121,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Rafael Panel ${{ github.ref_name }}
-          body_path: RELEASE_NOTES_v59.md
+          body_path: RELEASE_NOTES_v63.md
           prerelease: false
           files: |
-            build-v59/rafael-linux-amd64.tar.gz
-            build-v59/rafael-linux-amd64.tar.gz.sha256
-            build-v59/rafael-xray-linux-amd64
-            build-v59/rafael-xray-linux-amd64.sha256
-            build-v59/rafael-xray-core-source.tar.gz
-            build-v59/rafael-xray-core-source.tar.gz.sha256
-            README-v59.md
-            RELEASE_NOTES_v59.md
-            BUILD_V59_CHECKLIST.md
+            build-v63/rafael-linux-amd64.tar.gz
+            build-v63/rafael-linux-amd64.tar.gz.sha256
+            build-v63/rafael-xray-linux-amd64
+            build-v63/rafael-xray-linux-amd64.sha256
+            build-v63/rafael-xray-core-source.tar.gz
+            build-v63/rafael-xray-core-source.tar.gz.sha256
+            README-v63.md
+            RELEASE_NOTES_v63.md
+            BUILD_V63_CHECKLIST.md
             LICENSE
-            build-v59/LICENSE-XRAY-MPL-2.0
+            build-v63/LICENSE-XRAY-MPL-2.0
             NOTICE

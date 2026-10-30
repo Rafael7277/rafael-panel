@@ -550,9 +550,17 @@ func (s *UserService) GetUserQuotaSnapshot(userID int) (clientCount int, assigne
 			clients, cerr := (&InboundService{}).GetClients(inbound)
 			if cerr == nil {
 				clientCount += len(clients)
+				statsByEmail := make(map[string]int64, len(inbound.ClientStats))
+				for _, stat := range inbound.ClientStats {
+					statsByEmail[strings.ToLower(strings.TrimSpace(stat.Email))] = stat.Total
+				}
 				for _, client := range clients {
-					if client.TotalGB > 0 {
-						assignedTotal += client.TotalGB
+					effective := model.InitialClientTrafficQuota(client)
+					if statTotal := statsByEmail[strings.ToLower(strings.TrimSpace(client.Email))]; statTotal > 0 {
+						effective = statTotal
+					}
+					if effective > 0 {
+						assignedTotal += effective
 					}
 				}
 			}
@@ -570,6 +578,10 @@ func (s *UserService) GetUserQuotaSnapshot(userID int) (clientCount int, assigne
 		clients, cerr := (&InboundService{}).GetClients(inbound)
 		ownedByEmail := map[string]string{}
 		if cerr == nil {
+			statsByEmail := make(map[string]int64, len(inbound.ClientStats))
+			for _, stat := range inbound.ClientStats {
+				statsByEmail[strings.ToLower(strings.TrimSpace(stat.Email))] = stat.Total
+			}
 			for _, client := range clients {
 				if !ClientOwnedByReseller(client, user) {
 					continue
@@ -587,8 +599,12 @@ func (s *UserService) GetUserQuotaSnapshot(userID int) (clientCount int, assigne
 					entry = &logicalQuota{}
 					logicalUsers[key] = entry
 				}
-				if client.TotalGB > entry.Total {
-					entry.Total = client.TotalGB
+				effective := model.InitialClientTrafficQuota(client)
+				if statTotal := statsByEmail[emailKey]; statTotal > 0 {
+					effective = statTotal
+				}
+				if effective > entry.Total {
+					entry.Total = effective
 				}
 			}
 		}

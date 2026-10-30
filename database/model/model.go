@@ -175,10 +175,11 @@ type Client struct {
 	LimitIP  int    `json:"limitIp"`            // IP limit for this client
 	// LimitGrace is retained to read existing inbound JSON. Build 41 no longer
 	// exposes or writes a client-configurable grace period.
-	LimitGrace int   `json:"limitGrace,omitempty"`         // Legacy-only compatibility field.
-	TotalGB    int64 `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
-	ExpiryTime int64 `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
-	Enable     bool  `json:"enable" form:"enable"`         // Whether the client is enabled
+	LimitGrace  int    `json:"limitGrace,omitempty"`                     // Legacy-only compatibility field.
+	TotalGB     int64  `json:"totalGB" form:"totalGB"`                   // Nominal traffic allocation in bytes
+	QuotaFactor *int64 `json:"quotaFactor,omitempty" form:"quotaFactor"` // Divisor applied to new traffic allocations; 0 disables scaling.
+	ExpiryTime  int64  `json:"expiryTime" form:"expiryTime"`             // Expiration timestamp
+	Enable      bool   `json:"enable" form:"enable"`                     // Whether the client is enabled
 	// DisableReason records why a disabled client was disabled: "manual" (an
 	// admin turned it off), "quota" / "expiry" (the traffic job), or
 	// "reseller" (the reseller lifecycle). It lives inside the inbound

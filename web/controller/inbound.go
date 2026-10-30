@@ -576,9 +576,7 @@ func (a *InboundController) addInboundClient(c *gin.Context) {
 				jsonMsg(c, "Resellers cannot create unlimited clients", serviceErr("unlimited clients are not allowed for resellers"))
 				return
 			}
-			if client.TotalGB > 0 {
-				addedAssigned += client.TotalGB
-			}
+			addedAssigned += model.InitialClientTrafficQuota(client)
 		}
 		if user.MaxUsers > 0 && currentClients+addedClients > user.MaxUsers {
 			jsonMsg(c, "Reseller client quota exceeded", serviceErr("max users exceeded"))
@@ -699,13 +697,18 @@ func (a *InboundController) updateInboundClient(c *gin.Context) {
 			return
 		}
 		var oldAssigned int64
+		var oldClient *model.Client
 		var currentUsage int64
 		for _, client := range currentClients {
 			if inboundClientMatches(currentInbound.Protocol, client, clientId) && client.TotalGB > 0 {
-				oldAssigned = client.TotalGB
+				oldClient = &client
+				oldAssigned = model.InitialClientTrafficQuota(client)
 				for _, stat := range currentInbound.ClientStats {
 					if strings.EqualFold(strings.TrimSpace(stat.Email), strings.TrimSpace(client.Email)) {
 						currentUsage = stat.Up + stat.Down
+						if stat.Total > 0 {
+							oldAssigned = stat.Total
+						}
 						break
 					}
 				}
@@ -719,7 +722,10 @@ func (a *InboundController) updateInboundClient(c *gin.Context) {
 					jsonMsg(c, "Resellers cannot create unlimited clients", serviceErr("unlimited clients are not allowed for resellers"))
 					return
 				}
-				newAssigned = client.TotalGB
+				newAssigned = model.InitialClientTrafficQuota(client)
+				if oldClient != nil {
+					newAssigned = model.UpdatedClientTrafficQuota(*oldClient, client, oldAssigned)
+				}
 				break
 			}
 		}

@@ -194,6 +194,12 @@
                             <div class="inbound-mobile-client-title">
                               <strong>[[ client.email || 'Unnamed client' ]]</strong>
                               <span :class="client.enable ? 'is-enabled' : 'is-disabled'">[[ client.enable ? 'Enabled' : 'Off' ]]</span>
+                              <a-tag class="traffic-coefficient-tag" title="Traffic coefficient" :style="{ margin: '0', lineHeight: '16px', height: '18px', fontSize: '10px' }">Factor ×[[ clientQuotaFactor(dbInbound, client) ]]</a-tag>
+                            </div>
+                            <div class="inbound-mobile-client-traffic">
+                              <span>Usage</span>
+                              <strong>[[ SizeFormatter.sizeFormat(getSumStats(dbInbound, client.email)) ]] / [[ getClientQuotaTotal(dbInbound, client) > 0 ? SizeFormatter.sizeFormat(getClientQuotaTotal(dbInbound, client)) : '∞' ]]</strong>
+                              <a-progress v-if="getClientQuotaTotal(dbInbound, client) > 0" :stroke-color="clientStatsColor(dbInbound, client.email, client)" :show-info="false" :percent="statsProgress(dbInbound, client.email, client)" />
                             </div>
                             <div class="inbound-mobile-client-actions">
                               <a-switch v-model="client.enable" size="small" @change="switchEnableClient(dbInbound.id, client, $event)"></a-switch>
@@ -1511,9 +1517,15 @@
           ? options.clients
           : (Array.isArray(clients) ? clients : [clients].filter(Boolean));
         const effectiveClients = options.multiLink ? clientList.slice(-1) : clientList;
+        const serializedClients = effectiveClients.map(client => {
+          const serialized = client.toJson();
+          const factor = Number(client.quotaFactor);
+          serialized.quotaFactor = Number.isFinite(factor) ? Math.max(0, Math.min(10000, Math.round(factor))) : 0;
+          return serialized;
+        });
         const data = {
           id: dbInboundId,
-          settings: '{"clients": [' + effectiveClients.toString() + ']}',
+          settings: JSON.stringify({ clients: serializedClients }),
         };
         if (options.multiLink) {
           data.multiLink = true;
@@ -1522,9 +1534,12 @@
         await this.submit(`${panelApiPath}/inbounds/addClient`, data, modal);
       },
       async updateClient(client, dbInboundId, clientId) {
+        const serializedClient = client.toJson();
+        const factor = Number(client.quotaFactor);
+        serializedClient.quotaFactor = Number.isFinite(factor) ? Math.max(0, Math.min(10000, Math.round(factor))) : 0;
         const data = {
           id: dbInboundId,
-          settings: '{"clients": [' + client.toString() + ']}',
+          settings: JSON.stringify({ clients: [serializedClient] }),
         };
         await this.submit(`${panelApiPath}/inbounds/updateClient/${clientId}`, data, clientModal);
       },
@@ -1716,6 +1731,35 @@
         const inbound = dbInbound.toInbound();
         return inbound && inbound.clients ? inbound.clients : null;
       },
+      clientQuotaFactor(dbInbound, client) {
+        const clientFactor = Number(client && client.quotaFactor);
+        if (Number.isFinite(clientFactor) && clientFactor > 0) return clientFactor;
+        // Fall back to the raw settings in case an older/cached model omitted
+        // quotaFactor while the persisted inbound JSON still has it.
+        try {
+          const settings = dbInbound && typeof dbInbound.settings === 'string'
+            ? JSON.parse(dbInbound.settings || '{}')
+            : (dbInbound && dbInbound.settings);
+          const rawClients = settings && Array.isArray(settings.clients) ? settings.clients : [];
+          const email = String(client && client.email || '').toLowerCase();
+          const rawClient = rawClients.find(item => item && String(item.email || '').toLowerCase() === email);
+          const rawFactor = Number(rawClient && rawClient.quotaFactor);
+          if (Number.isFinite(rawFactor) && rawFactor > 0) return rawFactor;
+        } catch (e) {
+          console.warn('Unable to read stored client traffic coefficient:', e);
+        }
+        return 1;
+      },
+      getClientQuotaTotal(dbInbound, client) {
+        if (!client || !(Number(client.totalGB) > 0)) return 0;
+        const stats = this.getClientStats(dbInbound, client.email);
+        const effectiveTotal = Number(stats && stats.total);
+        if (Number.isFinite(effectiveTotal) && effectiveTotal > 0) return effectiveTotal;
+        const nominalTotal = Number(client.totalGB);
+        const factor = this.clientQuotaFactor(dbInbound, client);
+        if (!Number.isFinite(nominalTotal) || nominalTotal <= 0) return 0;
+        return Math.max(1, Math.floor(nominalTotal / factor));
+      },
       resetClientTraffic(client, dbInboundId, confirmation = true) {
         if (confirmation) {
           this.$confirm({
@@ -1796,24 +1840,29 @@
         if (!clientStats) return 0;
         return clientStats.allTime || (clientStats.up + clientStats.down);
       },
-      getRemStats(dbInbound, email) {
+      getRemStats(dbInbound, email, client = null) {
         if (!email || email.length == 0) return 0;
         let clientStats = this.getClientStats(dbInbound, email);
         if (!clientStats) return 0;
-        let remained = clientStats.total - (clientStats.up + clientStats.down);
+        const total = client ? this.getClientQuotaTotal(dbInbound, client) : Number(clientStats.total || 0);
+        let remained = total - (clientStats.up + clientStats.down);
         return remained > 0 ? remained : 0;
       },
-      clientStatsColor(dbInbound, email) {
+      clientStatsColor(dbInbound, email, client = null) {
         if (!email || email.length == 0) return ColorUtils.clientUsageColor();
         let clientStats = this.getClientStats(dbInbound, email);
-        return ColorUtils.clientUsageColor(clientStats, app.trafficDiff)
+        if (!clientStats) return ColorUtils.clientUsageColor();
+        const quota = client ? this.getClientQuotaTotal(dbInbound, client) : Number(clientStats.total || 0);
+        const quotaAwareStats = Object.assign({}, clientStats, { total: quota });
+        return ColorUtils.clientUsageColor(quotaAwareStats, app.trafficDiff)
       },
-      statsProgress(dbInbound, email) {
+      statsProgress(dbInbound, email, client = null) {
         if (!email || email.length == 0) return 100;
         let clientStats = this.getClientStats(dbInbound, email);
         if (!clientStats) return 0;
-        if (clientStats.total == 0) return 100;
-        return 100 * (clientStats.down + clientStats.up) / clientStats.total;
+        const total = client ? this.getClientQuotaTotal(dbInbound, client) : Number(clientStats.total || 0);
+        if (total <= 0) return 100;
+        return Math.min(100, Math.max(0, 100 * (clientStats.down + clientStats.up) / total));
       },
       expireProgress(expTime, reset) {
         now = new Date().getTime();
@@ -1822,11 +1871,12 @@
         if (remainedSeconds >= resetSeconds) return 0;
         return 100 * (1 - (remainedSeconds / resetSeconds));
       },
-      statsExpColor(dbInbound, email) {
+      statsExpColor(dbInbound, email, client = null) {
         if (!email || email.length == 0) return '#7a316f';
         let clientStats = this.getClientStats(dbInbound, email);
         if (!clientStats) return '#7a316f';
-        let statsColor = ColorUtils.usageColor(clientStats.down + clientStats.up, this.trafficDiff, clientStats.total);
+        const quota = client ? this.getClientQuotaTotal(dbInbound, client) : Number(clientStats.total || 0);
+        let statsColor = ColorUtils.usageColor(clientStats.down + clientStats.up, this.trafficDiff, quota);
         let expColor = ColorUtils.usageColor(new Date().getTime(), this.expireDiff, clientStats.expiryTime);
         switch (true) {
           case statsColor == "red" || expColor == "red":
@@ -1843,11 +1893,11 @@
         let clientStats = dbInbound ? this.getClientStats(dbInbound, email) : null;
         return clientStats ? clientStats['enable'] : true;
       },
-      isClientDepleted(dbInbound, email) {
+      isClientDepleted(dbInbound, email, client = null) {
         if (!email || !dbInbound) return false;
         const stats = this.getClientStats(dbInbound, email);
         if (!stats) return false;
-        const total = stats.total ?? 0;
+        const total = client ? this.getClientQuotaTotal(dbInbound, client) : (stats.total ?? 0);
         const used = (stats.up ?? 0) + (stats.down ?? 0);
         const hasTotal = total > 0;
         const exhausted = hasTotal && used >= total;

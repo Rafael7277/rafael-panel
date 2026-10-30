@@ -13,7 +13,7 @@ APP_DIR="${RAFAEL_MAIN_FOLDER:-${SCRIPT_DIR}}"
 ROOT_DIR="/usr/local/rafael"
 RELEASE_MANAGER="${RAFAEL_RELEASE_MANAGER:-${ROOT_DIR}/rafael-updater.sh}"
 ENV_FILE="/etc/default/rafael"
-CLI_BUILD_VERSION="v59"
+CLI_BUILD_VERSION="v63"
 # SHA-256 of the rafael-updater.sh that ships in the SAME release archive.
 # Injected by the release builder at build time. The bootstrap bridge below
 # refuses to install/source a bundled updater whose hash does not match this
