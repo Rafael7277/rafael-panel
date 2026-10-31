@@ -1,37 +1,44 @@
-# GitHub install and release guide
+# Installation
 
-The public repository is `Rafael7277/rafael-panel`. Rafael is based on MHSanaei/3x-ui v2.9.2 (`config/version`) and keeps the inherited GPL-3.0 license. The bundled Xray fork is separately published under MPL-2.0. The install package contains both license texts. See `NOTICE` and `LICENSE`.
+Rafael Panel currently publishes Linux amd64 packages. Run the installer as `root` on a supported Debian or Ubuntu server.
 
-## Install
-
-Latest public release:
+## Install the latest release
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Rafael7277/rafael-panel/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Rafael7277/rafael-panel/main/install.sh)
 ```
 
-Pinned v59:
+To select a release explicitly, pass its tag:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Rafael7277/rafael-panel/main/install.sh) v59
+bash <(curl -fsSL https://raw.githubusercontent.com/Rafael7277/rafael-panel/main/install.sh) v63
 ```
 
-Run as root on supported Debian/Ubuntu Linux amd64. The installer downloads the release and SHA-256 sidecar over HTTPS and verifies the package. A clean install uses the flat /usr/local/rafael layout. Existing managed installs use the Rafael updater and preserve their database/configuration. The user confirmed a successful v58-to-v59 CLI update.
+The installer guides you through the panel port, optional TLS certificate setup, and panel web path. Keep a copy of your database and configuration before making manual changes to an existing installation. For upgrades of a managed installation, use the Rafael CLI updater so it can validate the package and preserve the existing configuration and database.
 
-The wizard offers a random or chosen port, optional domain/IP, generated private web path, admin credentials, Let's Encrypt, an existing certificate/key pair, or HTTP without SSL. Let's Encrypt HTTP-01 requires public TCP 80 to reach the challenge listener.
+## Flat installation from a release package
 
-The panel package contains the matching pinned IP-limit Xray binary and GeoIP/GeoSite data. The build fetches and verifies the binary from the public [Rafael Xray Core release](https://github.com/Rafael7277/rafael-xray-core/releases/tag/v1.260327.0-rafael.1), then bundles it; users do not download Xray separately. Standalone Xray and matching source assets also include SHA-256 files.
+Download the package and its checksum from the matching [GitHub release](https://github.com/Rafael7277/rafael-panel/releases/latest), then verify and install it:
 
-## Build and release
-
-Each push to main builds the Linux amd64 panel bundle with the pinned Rafael Xray release and uploads it as a downloadable Actions artifact. A version tag builds the same package and publishes a GitHub Release; this workflow publishes v59 for tag v59.
-
-Local Windows build (Go and tar required):
-
-```powershell
-./build-release-v59.ps1
+```bash
+curl -fL -o rafael-linux-amd64.tar.gz https://github.com/Rafael7277/rafael-panel/releases/download/v63/rafael-linux-amd64.tar.gz
+curl -fL -o rafael-linux-amd64.tar.gz.sha256 https://github.com/Rafael7277/rafael-panel/releases/download/v63/rafael-linux-amd64.tar.gz.sha256
+sha256sum --check rafael-linux-amd64.tar.gz.sha256
+tar -xzf rafael-linux-amd64.tar.gz
+cd rafael
+bash ./install-local.sh
 ```
 
-The bundle is build-v59/rafael-linux-amd64.tar.gz and contains rafael/bin/xray-linux-amd64. The release also contains the standalone Xray binary, pinned Xray source archive, and SHA-256 sidecars.
+The archive bundles the panel, its matching Rafael Xray binary, GeoIP/GeoSite data, installation and update scripts, licenses, and notices. No separate Xray download is needed.
 
-Clean-server installs, certificate issuance/renewal, and additional IP-limit runtime acceptance remain open in BUILD_V59_CHECKLIST.md.
+## TLS and network access
+
+TLS is optional during setup. If enabled, provide a domain that resolves to the server and allow the selected panel port through the server firewall. If TLS is not configured, use HTTP and restrict access to the panel port with a firewall or trusted network.
+
+## Upgrading
+
+For an installed Rafael Panel, run the updater from the panel CLI and select the desired release. The updater validates the archive and checksum and stages the new release before activation. If health checks fail, it attempts to restore the previous release. Keep the database backup created by the updater until the upgraded panel has been confirmed healthy.
+
+## Support information
+
+When reporting an installation issue, include the Rafael Panel version, Linux distribution and architecture, the installer/updater step, and relevant redacted logs. Never post passwords, private keys, access tokens, database dumps, or unredacted client data.

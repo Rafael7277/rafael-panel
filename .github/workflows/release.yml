@@ -40,9 +40,9 @@ jobs:
           go build -mod=mod -trimpath -ldflags "-s -w" -o build-v63/rafael/rafael-panel .
 
           cp bootstrap.sh install-local.sh rafael.sh rafael.service.debian \
-            rafael-updater.sh rafael-launcher.sh LICENSE NOTICE \
-            README-v63.md RELEASE_NOTES_v63.md BUILD_V63_CHECKLIST.md \
+            rafael-updater.sh rafael-launcher.sh LICENSE NOTICE README.md \
             xray-fork-version.txt build-v63/rafael/
+          cp docs/releases/v63.md build-v63/rafael/RELEASE_NOTES_v63.md
           cp third_party/xray-core/LICENSE build-v63/rafael/LICENSE-XRAY-MPL-2.0
           cp third_party/xray-core/LICENSE build-v63/LICENSE-XRAY-MPL-2.0
 
@@ -121,7 +121,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Rafael Panel ${{ github.ref_name }}
-          body_path: RELEASE_NOTES_v63.md
+          body_path: docs/releases/v63.md
           prerelease: false
           files: |
             build-v63/rafael-linux-amd64.tar.gz
@@ -130,9 +130,3 @@ jobs:
             build-v63/rafael-xray-linux-amd64.sha256
             build-v63/rafael-xray-core-source.tar.gz
             build-v63/rafael-xray-core-source.tar.gz.sha256
-            README-v63.md
-            RELEASE_NOTES_v63.md
-            BUILD_V63_CHECKLIST.md
-            LICENSE
-            build-v63/LICENSE-XRAY-MPL-2.0
-            NOTICE
